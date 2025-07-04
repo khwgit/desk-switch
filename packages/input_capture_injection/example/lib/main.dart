@@ -173,7 +173,6 @@ class _MyAppState extends State<MyApp> {
           y: 100.0,
           type: MouseInputType.leftMouseDown,
           button: MouseButton.left,
-          clickCount: 1,
           deltaX: 0.0,
           deltaY: 0.0,
           deltaZ: 0.0,

@@ -22,12 +22,6 @@ class MockInputCaptureInjectionPlatform
   }
 
   @override
-  Future<void> injectInput(Input input) {
-    // TODO: implement injectInput
-    throw UnimplementedError();
-  }
-
-  @override
   Future<bool> isPermissionGranted([Set<InputType>? types]) {
     // For testing purposes, return true for all permissions
     return Future.value(true);
