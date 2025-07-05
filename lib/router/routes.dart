@@ -1,8 +1,8 @@
 import 'package:desk_switch/features/app/screens/app_scaffold.dart';
 import 'package:desk_switch/features/home/screens/home_screen.dart';
 import 'package:desk_switch/features/settings/screens/settings_screen.dart';
-import 'package:desk_switch/modules/go_router_maker/go_router_maker.dart';
 import 'package:go_router/go_router.dart';
+import 'package:go_router_maker/go_router_maker.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 final appRouteProvider = Provider<AppRoute>(

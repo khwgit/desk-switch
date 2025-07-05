@@ -11,6 +11,9 @@ platforms:
   macos:
   windows:
 
+workspace:
+  - packages/go_router_maker
+
 dependencies:
   flutter:
     sdk: flutter
@@ -20,7 +23,8 @@ dependencies:
   # State management and UI
   hooks_riverpod: ^3.0.0-dev.16
   flutter_hooks:
-  go_router: ^15.1.3
+  go_router: ^16.0.0
+  go_router_maker: ^0.0.1
 
   # Code generation
   freezed_annotation: ^3.0.0
@@ -63,6 +67,7 @@ dev_dependencies:
   freezed: ^3.0.6
   json_serializable: ^6.9.5
   riverpod_generator: ^3.0.0-dev.16
+  melos: ^7.0.0-dev.9
 
 flutter:
   uses-material-design: true
