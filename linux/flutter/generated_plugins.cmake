@@ -3,8 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  desktop_window
-  input_capture_injection
+  kvm_helper
   screen_retriever_linux
   window_manager
 )

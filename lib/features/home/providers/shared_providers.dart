@@ -5,12 +5,12 @@ import 'package:desk_switch/core/services/client_service.dart';
 import 'package:desk_switch/core/services/server_service.dart';
 import 'package:desk_switch/core/utils/logger.dart';
 import 'package:desk_switch/models/server_info.dart';
-import 'package:input_capture_injection/input_capture_injection.dart';
+import 'package:kvm_helper/kvm_helper.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'shared_providers.g.dart';
 
-final _inputCapture = InputCaptureInjection();
+final _kvm = KvmHelper();
 
 // Provider for whether the server is running
 @riverpod
@@ -52,9 +52,9 @@ class Server extends _$Server {
       await broadcastService.start(serverInfo);
 
       // Subscribe to input capture and log events
-      await _inputCapture.requestPermission();
+      await _kvm.requestPermission();
       _inputCaptureSubscription?.cancel();
-      _inputCaptureSubscription = _inputCapture.inputs().listen((input) {
+      _inputCaptureSubscription = _kvm.inputs().listen((input) {
         logger.info('🖱️ Captured input: $input');
         serverService.sendInput(input);
       });

@@ -1,7 +1,15 @@
 import 'package:desk_switch/models/input.pb.dart' as pb;
-import 'package:input_capture_injection/models/input.dart';
+import 'package:kvm_helper/kvm_helper.dart';
 
-export 'package:input_capture_injection/models/input.dart';
+export 'package:kvm_helper/kvm_helper.dart'
+    show
+        Input,
+        KeyboardInput,
+        MouseInput,
+        KeyboardInputType,
+        KeyModifier,
+        MouseInputType,
+        MouseButton;
 
 // Conversion between Dart model and protobuf
 extension InputToProto on Input {
