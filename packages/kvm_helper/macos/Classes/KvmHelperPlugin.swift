@@ -2,6 +2,7 @@ import Cocoa
 import FlutterMacOS
 import CoreGraphics
 import ApplicationServices
+import IOKit
 
 enum InputType: String, CaseIterable {
   case keyboard = "keyboard"
@@ -13,8 +14,12 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
   private var runLoopSource: CFRunLoopSource?
   private var blockedInputTypes: Set<InputType> = []
   private var inputSink: FlutterEventSink?
+  private var monitorSink: FlutterEventSink?
   private var originalCursor: NSCursor?
   private var allowedInputTypes: Set<InputType> = Set(InputType.allCases) // Default to all types
+  private var monitorNotificationPort: IONotificationPortRef?
+  private var monitorIterator: io_iterator_t = 0
+  private var screenParametersObserver: NSObjectProtocol?
 
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "kvm_helper", binaryMessenger: registrar.messenger)
@@ -39,6 +44,20 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
       onCancel: { [weak instance] arguments in
         instance?.inputSink = nil
         instance?.stopEventTap()
+        return nil
+      }
+    ))
+
+    let monitorEventChannel = FlutterEventChannel(name: "kvm_helper/monitors", binaryMessenger: registrar.messenger)
+    monitorEventChannel.setStreamHandler(GeneralStreamHandler(
+      onListen: { [weak instance] arguments, events in
+        instance?.monitorSink = events
+        instance?.startMonitorDetection()
+        return nil
+      },
+      onCancel: { [weak instance] arguments in
+        instance?.monitorSink = nil
+        instance?.stopMonitorDetection()
         return nil
       }
     ))
@@ -268,7 +287,7 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
       "x": location.x,
       "y": location.y,
       "type": eventType,
-      "button": button,
+      "button": button ?? NSNull(),
       "clickCount": clickCount,
       "deltaX": deltaX,
       "deltaY": deltaY,
@@ -459,8 +478,71 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
     }
   }
 
+  // MARK: - Monitor Methods
+
+  private func startMonitorDetection() {
+    // Send initial monitor list
+    sendMonitorList()
+
+    // Remove any existing observer
+    if let observer = screenParametersObserver {
+        NotificationCenter.default.removeObserver(observer)
+        screenParametersObserver = nil
+    }
+
+    // Observe screen parameter changes
+    screenParametersObserver = NotificationCenter.default.addObserver(
+        forName: NSApplication.didChangeScreenParametersNotification,
+        object: nil,
+        queue: .main
+    ) { [weak self] _ in
+        self?.sendMonitorList()
+    }
+  }
+
+  private func stopMonitorDetection() {
+    if let observer = screenParametersObserver {
+        NotificationCenter.default.removeObserver(observer)
+        screenParametersObserver = nil
+    }
+  }
+
+  private func sendMonitorList() {
+    let monitors = getCurrentMonitors()
+    monitorSink?(monitors)
+  }
+
+  private func getCurrentMonitors() -> [[String: Any]] {
+    var monitors: [[String: Any]] = []
+    
+    // Get all screens
+    let screens = NSScreen.screens
+    for (index, screen) in screens.enumerated() {
+      let deviceDescription = screen.deviceDescription
+      let displayID = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID ?? 0
+      
+      // Use CGDisplayBounds for accurate global coordinates
+      let bounds = CGDisplayBounds(displayID)
+      let monitor: [String: Any] = [
+        "id": "\(displayID)",
+        "name": "Display \(index + 1)",
+        "x": bounds.origin.x,
+        "y": bounds.origin.y,
+        "width": bounds.size.width,
+        "height": bounds.size.height,
+        "isPrimary": index == 0, // First screen is typically primary
+        "scaleFactor": screen.backingScaleFactor
+      ]
+      
+      monitors.append(monitor)
+    }
+    
+    return monitors
+  }
+
   deinit {
     stopEventTap()
+    stopMonitorDetection()
     showCursor()
   }
 }

@@ -1,7 +1,9 @@
 import 'kvm_helper_platform_interface.dart';
 import 'models/input.dart';
+import 'models/monitor.dart';
 
 export 'models/input.dart';
+export 'models/monitor.dart';
 
 class KvmHelper {
   const KvmHelper._();
@@ -52,5 +54,9 @@ class KvmHelper {
 
   Future<Set<InputType>> getBlockedInputs() {
     return KvmHelperPlatform.instance.getBlockedInputs();
+  }
+
+  Stream<List<Monitor>> monitors() {
+    return KvmHelperPlatform.instance.monitors();
   }
 }

@@ -33,6 +33,9 @@ class MockKvmHelperPlatform
 
   @override
   Future<Set<InputType>> getBlockedInputs() => Future.value(<InputType>{});
+
+  @override
+  Stream<List<Monitor>> monitors() => const Stream.empty();
 }
 
 void main() {
@@ -83,5 +86,14 @@ void main() {
     // Test with no types (all inputs)
     final allStream = kvmHelperPlugin.inputs();
     expect(allStream, isA<Stream<Input>>());
+  });
+
+  test('monitors stream', () {
+    KvmHelper kvmHelperPlugin = KvmHelper();
+    MockKvmHelperPlatform fakePlatform = MockKvmHelperPlatform();
+    KvmHelperPlatform.instance = fakePlatform;
+
+    final monitorsStream = kvmHelperPlugin.monitors();
+    expect(monitorsStream, isA<Stream<List<Monitor>>>());
   });
 }

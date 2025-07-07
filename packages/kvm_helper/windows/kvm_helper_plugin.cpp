@@ -16,6 +16,7 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <vector>
 
 namespace kvm_helper
 {
@@ -23,6 +24,7 @@ namespace kvm_helper
   namespace
   {
     std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> input_sink;
+    std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> monitor_sink;
 
     HHOOK keyboard_hook = nullptr;
     HHOOK mouse_hook = nullptr;
@@ -39,6 +41,10 @@ namespace kvm_helper
     // Set of allowed input types for filtering
     std::set<std::string> allowed_input_types;
     std::mutex allowed_input_mutex;
+
+    // Monitor detection
+    HWND monitor_hwnd = nullptr;
+    WNDPROC original_wndproc = nullptr;
 
     LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
     {
@@ -285,6 +291,29 @@ namespace kvm_helper
         });
     input_channel->SetStreamHandler(std::move(input_handler));
 
+    // Monitor event channel
+    auto monitor_channel = std::make_unique<flutter::EventChannel<flutter::EncodableValue>>(
+        registrar->messenger(), "kvm_helper/monitors",
+        &flutter::StandardMethodCodec::GetInstance());
+
+    auto monitor_handler = std::make_unique<flutter::StreamHandlerFunctions<flutter::EncodableValue>>(
+        [](const flutter::EncodableValue *arguments,
+           std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> &&events)
+            -> std::unique_ptr<flutter::StreamHandlerError<flutter::EncodableValue>>
+        {
+          monitor_sink = std::move(events);
+          // Send initial monitor list
+          SendMonitorList();
+          return nullptr;
+        },
+        [](const flutter::EncodableValue *arguments)
+            -> std::unique_ptr<flutter::StreamHandlerError<flutter::EncodableValue>>
+        {
+          monitor_sink.reset();
+          return nullptr;
+        });
+    monitor_channel->SetStreamHandler(std::move(monitor_handler));
+
     channel->SetMethodCallHandler(
         [plugin_pointer = plugin.get()](const auto &call, auto result)
         {
@@ -525,6 +554,51 @@ namespace kvm_helper
     else
     {
       result->NotImplemented();
+    }
+
+    // Monitor helper functions
+    void SendMonitorList()
+    {
+      if (!monitor_sink)
+        return;
+
+      std::vector<flutter::EncodableValue> monitors;
+
+      // Enumerate all monitors
+      EnumDisplayMonitors(nullptr, nullptr, [](HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) -> BOOL
+                          {
+          auto monitors_ptr = reinterpret_cast<std::vector<flutter::EncodableValue>*>(dwData);
+          
+          MONITORINFOEX monitorInfo;
+          monitorInfo.cbSize = sizeof(MONITORINFOEX);
+          if (GetMonitorInfo(hMonitor, &monitorInfo))
+          {
+            flutter::EncodableMap monitor;
+            monitor[flutter::EncodableValue("id")] = flutter::EncodableValue(monitorInfo.szDevice);
+            monitor[flutter::EncodableValue("name")] = flutter::EncodableValue(monitorInfo.szDevice);
+            monitor[flutter::EncodableValue("x")] = flutter::EncodableValue((double)monitorInfo.rcMonitor.left);
+            monitor[flutter::EncodableValue("y")] = flutter::EncodableValue((double)monitorInfo.rcMonitor.top);
+            monitor[flutter::EncodableValue("width")] = flutter::EncodableValue((double)(monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left));
+            monitor[flutter::EncodableValue("height")] = flutter::EncodableValue((double)(monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top));
+            monitor[flutter::EncodableValue("isPrimary")] = flutter::EncodableValue((monitorInfo.dwFlags & MONITORINFOF_PRIMARY) != 0);
+            monitor[flutter::EncodableValue("scaleFactor")] = flutter::EncodableValue(1.0); // Default scale factor
+            
+            monitors_ptr->emplace_back(flutter::EncodableValue(monitor));
+          }
+          return TRUE; }, reinterpret_cast<LPARAM>(&monitors));
+
+      monitor_sink->Success(flutter::EncodableValue(monitors));
+    }
+
+    // Window procedure to handle monitor changes
+    LRESULT CALLBACK MonitorWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+    {
+      if (uMsg == WM_DISPLAYCHANGE)
+      {
+        // Monitor configuration changed, send updated list
+        SendMonitorList();
+      }
+      return CallWindowProc(original_wndproc, hwnd, uMsg, wParam, lParam);
     }
   }
 

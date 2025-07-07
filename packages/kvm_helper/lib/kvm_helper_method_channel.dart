@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'kvm_helper_platform_interface.dart';
 import 'models/input.dart';
+import 'models/monitor.dart';
 
 /// An implementation of [KvmHelperPlatform] that uses method channels.
 class MethodChannelKvmHelper extends KvmHelperPlatform {
@@ -14,6 +15,10 @@ class MethodChannelKvmHelper extends KvmHelperPlatform {
 
   static const EventChannel _inputsEventChannel = EventChannel(
     'kvm_helper/inputs',
+  );
+
+  static const EventChannel _monitorsEventChannel = EventChannel(
+    'kvm_helper/monitors',
   );
 
   @override
@@ -92,5 +97,18 @@ class MethodChannelKvmHelper extends KvmHelperPlatform {
       }
     }
     return blockedTypes;
+  }
+
+  @override
+  Stream<List<Monitor>> monitors() {
+    return _monitorsEventChannel.receiveBroadcastStream().map((event) {
+      final List<dynamic> monitorsList = event as List<dynamic>;
+      return monitorsList
+          .map(
+            (monitorJson) =>
+                Monitor.fromJson(Map<String, dynamic>.from(monitorJson)),
+          )
+          .toList();
+    });
   }
 }

@@ -2,6 +2,7 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'kvm_helper_method_channel.dart';
 import 'models/input.dart';
+import 'models/monitor.dart';
 
 abstract class KvmHelperPlatform extends PlatformInterface {
   /// Constructs a KvmHelperPlatform.
@@ -68,5 +69,11 @@ abstract class KvmHelperPlatform extends PlatformInterface {
   /// Returns the set of currently blocked input types.
   Future<Set<InputType>> getBlockedInputs() {
     throw UnimplementedError('getBlockedInputs() has not been implemented.');
+  }
+
+  /// Stream of monitor configuration changes.
+  /// Updates when monitors are connected, disconnected, or rearranged.
+  Stream<List<Monitor>> monitors() {
+    throw UnimplementedError('monitors() has not been implemented.');
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:kvm_helper/kvm_helper.dart';
@@ -28,6 +29,16 @@ class _MyAppState extends State<MyApp> {
   final ScrollController _inputEventsScrollController = ScrollController();
   StreamSubscription<Input>? _inputSubscription;
 
+  // Monitor-related variables
+  final List<Monitor> _monitors = [];
+  StreamSubscription<List<Monitor>>? _monitorSubscription;
+  String? _currentMonitorId;
+  bool _isMonitoring = false;
+
+  // Cursor position tracking
+  double? _currentCursorX;
+  double? _currentCursorY;
+
   @override
   void initState() {
     super.initState();
@@ -37,6 +48,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void dispose() {
     _inputSubscription?.cancel();
+    _monitorSubscription?.cancel();
     _inputEventsScrollController.dispose();
     super.dispose();
   }
@@ -81,6 +93,54 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  Future<void> startMonitorDetection() async {
+    try {
+      await stopMonitorDetection(); // Stop any existing detection
+
+      _monitorSubscription = _kvmHelperPlugin.monitors().listen((monitors) {
+        if (mounted) {
+          setState(() {
+            _monitors.clear();
+            _monitors.addAll(monitors);
+          });
+        }
+        _addInputEvent(
+          'Monitor configuration updated: ${monitors.length} monitors',
+        );
+        for (final monitor in monitors) {
+          _addInputEvent(
+            '  - ${monitor.name}: ${monitor.width}x${monitor.height} at (${monitor.x}, ${monitor.y})',
+          );
+        }
+      });
+
+      if (mounted) {
+        setState(() {
+          _isMonitoring = true;
+        });
+      }
+      _addInputEvent('Started monitoring display configuration');
+    } catch (e) {
+      _addInputEvent('Error starting monitor detection: $e');
+    }
+  }
+
+  Future<void> stopMonitorDetection() async {
+    await _monitorSubscription?.cancel();
+    _monitorSubscription = null;
+    if (mounted) {
+      setState(() {
+        _isMonitoring = false;
+        // Clear cursor position when monitoring stops
+        if (!_isCapturing) {
+          _currentCursorX = null;
+          _currentCursorY = null;
+        }
+      });
+    }
+    _addInputEvent('Stopped monitoring display configuration');
+  }
+
   Future<void> requestPermission() async {
     try {
       final granted = await _kvmHelperPlugin.requestPermission();
@@ -112,6 +172,21 @@ class _MyAppState extends State<MyApp> {
           _addInputEvent(
             'Mouse: ${event.type} - Pos: (${event.x.toStringAsFixed(1)}, ${event.y.toStringAsFixed(1)}) - Button: ${event.button}',
           );
+
+          // If both monitoring and mouse capture are active, get the monitor at cursor position
+          if (_isMonitoring && _isCapturing) {
+            if (mounted) {
+              setState(() {
+                _currentCursorX = event.x;
+                _currentCursorY = event.y;
+                _currentMonitorId = _monitors
+                    .firstWhereOrNull(
+                      (monitor) => monitor.contains(x: event.x, y: event.y),
+                    )
+                    ?.id;
+              });
+            }
+          }
         } else {
           _addInputEvent('Unknown input event: $event');
         }
@@ -136,6 +211,11 @@ class _MyAppState extends State<MyApp> {
       setState(() {
         _isCapturing = false;
         _captureTypes = null;
+        // Clear cursor position when mouse capture stops
+        if (!_isMonitoring) {
+          _currentCursorX = null;
+          _currentCursorY = null;
+        }
       });
     }
     _addInputEvent('Stopped capturing input events');
@@ -320,31 +400,68 @@ class _MyAppState extends State<MyApp> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Platform info
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Platform: $_platformVersion',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Permission: ${_permissionGranted ? "✅ Granted" : "❌ Not Granted"}',
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Capturing: ${_isCapturing ? (_captureTypes?.map((t) => t.name).join(', ') ?? 'all') : 'none'}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: _isCapturing ? Colors.green : Colors.grey,
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Platform: $_platformVersion',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Permission: ${_permissionGranted ? "✅ Granted" : "❌ Not Granted"}',
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Capturing: ${_isCapturing ? (_captureTypes?.map((t) => t.name).join(', ') ?? 'all') : 'none'}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: _isCapturing
+                                      ? Colors.green
+                                      : Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Monitor Detection:',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text('Monitors: ${_monitors.length}'),
+                              Text(
+                                'Current Monitor: $_currentMonitorId at (${_currentCursorX?.toStringAsFixed(1) ?? 'N/A'}, ${_currentCursorY?.toStringAsFixed(1) ?? 'N/A'})',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -515,6 +632,39 @@ class _MyAppState extends State<MyApp> {
                   ),
                   child: const Text('Block All Inputs for 3 Seconds'),
                 ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Move the monitor detection buttons below the 'Block All Inputs for 3 Seconds' button
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isMonitoring ? null : startMonitorDetection,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _isMonitoring
+                            ? Colors.grey
+                            : Colors.green,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Start Monitor Detection'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isMonitoring ? stopMonitorDetection : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _isMonitoring
+                            ? Colors.red
+                            : Colors.grey,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Stop Monitor Detection'),
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 16),
