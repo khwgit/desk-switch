@@ -22,7 +22,7 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
     registrar.addMethodCallDelegate(instance, channel: channel)
 
     let inputEventChannel = FlutterEventChannel(name: "kvm_helper/inputs", binaryMessenger: registrar.messenger)
-    inputEventChannel.setStreamHandler(InputStreamHandler(
+    inputEventChannel.setStreamHandler(GeneralStreamHandler(
       onListen: { [weak instance] arguments, events in
         instance?.inputSink = events
         // Parse the types parameter from arguments
@@ -215,7 +215,7 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
     let timestamp = Int(event.timestamp)
     
     var eventType: String
-    var button: String = "left"
+    var button: String? = nil
     var clickCount = 1
     var deltaX: Double = 0
     var deltaY: Double = 0
@@ -224,9 +224,11 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
     switch type {
     case .leftMouseDown:
       eventType = "leftMouseDown"
+      button = "left"
       clickCount = Int(event.getIntegerValueField(.mouseEventClickState))
     case .leftMouseUp:
       eventType = "leftMouseUp"
+      button = "left"
     case .rightMouseDown:
       eventType = "rightMouseDown"
       button = "right"
@@ -238,6 +240,7 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
       eventType = "mouseMoved"
     case .leftMouseDragged:
       eventType = "leftMouseDragged"
+      button = "left"
     case .rightMouseDragged:
       eventType = "rightMouseDragged"
       button = "right"
@@ -462,7 +465,7 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
   }
 }
 
-private class InputStreamHandler: NSObject, FlutterStreamHandler {
+private class GeneralStreamHandler: NSObject, FlutterStreamHandler {
   private let onListen: (Any?, @escaping FlutterEventSink) -> FlutterError?
   private let onCancel: (Any?) -> FlutterError?
   
