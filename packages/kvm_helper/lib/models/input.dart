@@ -16,10 +16,10 @@ sealed class Input with _$Input {
     required double x,
     required double y,
     required MouseInputType type,
+    @Default(0) double deltaX,
+    @Default(0) double deltaY,
+    @Default(0) double deltaZ,
     MouseButton? button,
-    double? deltaX,
-    double? deltaY,
-    double? deltaZ,
   }) = MouseInput;
 
   // const factory Input.clipboard({
@@ -30,9 +30,16 @@ sealed class Input with _$Input {
   factory Input.fromJson(Map<String, dynamic> json) => _$InputFromJson(json);
 }
 
-enum InputType { keyboard, mouse }
+enum InputType {
+  keyboard,
+  mouse,
+}
 
-enum KeyboardInputType { keyDown, keyUp, flagsChanged }
+enum KeyboardInputType {
+  keyDown,
+  keyUp,
+  flagsChanged,
+}
 
 enum KeyModifier {
   shift,
@@ -59,4 +66,8 @@ enum MouseInputType {
   otherMouseDragged,
 }
 
-enum MouseButton { left, right, center }
+enum MouseButton {
+  left,
+  right,
+  center,
+}

@@ -193,7 +193,6 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
   private func handleKeyboardEvent(type: CGEventType, event: CGEvent) {
     let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
     let flags = event.flags
-    let timestamp = Int(event.timestamp)
     
     var eventType: String
     switch type {
@@ -223,7 +222,6 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
       "type": eventType,
       "modifiers": modifiers,
       "character": NSNull(),
-      "timestamp": timestamp
     ]
     
     inputSink?(eventData)
@@ -231,11 +229,9 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
 
   private func handleMouseEvent(type: CGEventType, event: CGEvent) {
     let location = event.location
-    let timestamp = Int(event.timestamp)
     
     var eventType: String
     var button: String? = nil
-    var clickCount = 1
     var deltaX: Double = 0
     var deltaY: Double = 0
     var deltaZ: Double = 0
@@ -244,14 +240,12 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
     case .leftMouseDown:
       eventType = "leftMouseDown"
       button = "left"
-      clickCount = Int(event.getIntegerValueField(.mouseEventClickState))
     case .leftMouseUp:
       eventType = "leftMouseUp"
       button = "left"
     case .rightMouseDown:
       eventType = "rightMouseDown"
       button = "right"
-      clickCount = Int(event.getIntegerValueField(.mouseEventClickState))
     case .rightMouseUp:
       eventType = "rightMouseUp"
       button = "right"
@@ -271,7 +265,6 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
     case .otherMouseDown:
       eventType = "otherMouseDown"
       button = "center"
-      clickCount = Int(event.getIntegerValueField(.mouseEventClickState))
     case .otherMouseUp:
       eventType = "otherMouseUp"
       button = "center"
@@ -288,11 +281,9 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
       "y": location.y,
       "type": eventType,
       "button": button ?? NSNull(),
-      "clickCount": clickCount,
       "deltaX": deltaX,
       "deltaY": deltaY,
       "deltaZ": deltaZ,
-      "timestamp": timestamp
     ]
     
     inputSink?(eventData)
