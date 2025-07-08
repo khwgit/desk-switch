@@ -31,9 +31,9 @@ extension InputToProto on Input {
             ..y = input.y
             ..type = input.type.toProto()
             ..button = (input.button?.toProto() ?? pb.MouseButton.LEFT)
-            ..deltaX = input.deltaX ?? 0
-            ..deltaY = input.deltaY ?? 0
-            ..deltaZ = input.deltaZ ?? 0);
+            ..deltaX = input.deltaX
+            ..deltaY = input.deltaY
+            ..deltaZ = input.deltaZ);
     }
   }
 }
@@ -55,9 +55,9 @@ extension ProtoToInput on pb.Input {
         y: m.y,
         type: m.type.toModel(),
         button: m.hasButton() ? m.button.toModel() : null,
-        deltaX: m.deltaX == 0 ? null : m.deltaX,
-        deltaY: m.deltaY == 0 ? null : m.deltaY,
-        deltaZ: m.deltaZ == 0 ? null : m.deltaZ,
+        deltaX: m.deltaX,
+        deltaY: m.deltaY,
+        deltaZ: m.deltaZ,
       );
     } else {
       throw Exception('Unknown input type');
