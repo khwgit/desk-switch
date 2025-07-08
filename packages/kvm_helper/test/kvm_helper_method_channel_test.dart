@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kvm_helper/kvm_helper.dart';
 import 'package:kvm_helper/kvm_helper_method_channel.dart';
 
 void main() {
@@ -16,7 +17,7 @@ void main() {
             switch (methodCall.method) {
               case 'requestPermission':
               case 'isPermissionGranted':
-              case 'setInputBlocked':
+              case 'setBlockedInputs':
                 return true;
               case 'getBlockedInputs':
                 return <String>[];
@@ -33,17 +34,23 @@ void main() {
   });
 
   test('requestPermission', () async {
-    final result = await platform.requestPermission();
+    final result = await platform.requestPermission(const {
+      ...InputType.values,
+    });
     expect(result, true);
   });
 
   test('isPermissionGranted', () async {
-    final result = await platform.isPermissionGranted();
+    final result = await platform.isPermissionGranted(const {
+      ...InputType.values,
+    });
     expect(result, true);
   });
 
-  test('setInputBlocked', () async {
-    final result = await platform.setInputBlocked(true);
+  test('setBlockedInputs', () async {
+    final result = await platform.setBlockedInputs(const {
+      ...InputType.values,
+    });
     expect(result, true);
   });
 

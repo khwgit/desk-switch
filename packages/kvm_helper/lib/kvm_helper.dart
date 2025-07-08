@@ -11,19 +11,21 @@ class KvmHelper {
   factory KvmHelper() => instance;
 
   Future<bool> requestPermission([Set<InputType>? types]) {
-    return KvmHelperPlatform.instance.requestPermission(types);
+    return KvmHelperPlatform.instance.requestPermission(
+      types ?? const {...InputType.values},
+    );
   }
 
   Future<bool> isPermissionGranted([Set<InputType>? types]) {
-    return KvmHelperPlatform.instance.isPermissionGranted(types);
+    return KvmHelperPlatform.instance.isPermissionGranted(
+      types ?? const {...InputType.values},
+    );
   }
 
   Stream<Input> inputs([Set<InputType>? types]) {
     return KvmHelperPlatform.instance
-        .inputs(types)
-        .map(
-          (event) => Input.fromJson(event),
-        );
+        .inputs(types ?? const {...InputType.values})
+        .map((event) => Input.fromJson(event));
   }
 
   Future<void> injectMouseInput(MouseInput input) {
@@ -41,19 +43,36 @@ class KvmHelper {
     };
   }
 
-  Future<bool> setInputBlocked(bool blocked, [Set<InputType>? types]) {
-    return KvmHelperPlatform.instance.setInputBlocked(
-      blocked,
-      types,
+  Future<bool> setBlockedInputs([Set<InputType>? types]) {
+    return KvmHelperPlatform.instance.setBlockedInputs(
+      types ?? const {...InputType.values},
     );
   }
 
-  Future<bool> isInputBlocked([Set<InputType>? types]) {
-    return KvmHelperPlatform.instance.isInputBlocked(types);
+  Future<void> blockInputs([Set<InputType>? types]) {
+    return setBlockedInputs(types);
+  }
+
+  Future<void> unblockInputs([Set<InputType>? types]) {
+    return types == null
+        ? setBlockedInputs({})
+        : getBlockedInputs().then(
+            (blocked) => setBlockedInputs(
+              blocked.difference(types),
+            ),
+          );
   }
 
   Future<Set<InputType>> getBlockedInputs() {
     return KvmHelperPlatform.instance.getBlockedInputs();
+  }
+
+  Future<bool> isInputBlocked([Set<InputType>? types]) async {
+    return getBlockedInputs().then(
+      (blocked) => types == null
+          ? blocked.isNotEmpty
+          : blocked.any((type) => types.contains(type)),
+    );
   }
 
   Stream<List<Monitor>> monitors() {

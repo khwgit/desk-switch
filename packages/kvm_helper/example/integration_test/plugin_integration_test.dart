@@ -27,19 +27,20 @@ void main() {
 
   testWidgets('input blocking test', (WidgetTester tester) async {
     final KvmHelper plugin = KvmHelper();
+    Set<InputType> blockedInputs = {};
 
     // Test setting input blocked
-    final bool result = await plugin.setInputBlocked(true, {
-      InputType.keyboard,
-    });
-    expect(result, isA<bool>());
+    await plugin.blockInputs();
 
     // Test getting blocked inputs
-    final Set<InputType> blockedInputs = await plugin.getBlockedInputs();
-    expect(blockedInputs, isA<Set<InputType>>());
+    blockedInputs = await plugin.getBlockedInputs();
+    expect(blockedInputs, isNotEmpty);
 
     // Test unblocking
-    final bool unblockResult = await plugin.setInputBlocked(false);
-    expect(unblockResult, isA<bool>());
+    await plugin.unblockInputs();
+
+    // Test getting blocked inputs
+    blockedInputs = await plugin.getBlockedInputs();
+    expect(blockedInputs, isEmpty);
   });
 }

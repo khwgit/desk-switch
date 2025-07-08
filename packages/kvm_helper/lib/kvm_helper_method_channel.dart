@@ -22,32 +22,31 @@ class MethodChannelKvmHelper extends KvmHelperPlatform {
   );
 
   @override
-  Future<bool> requestPermission([Set<InputType>? types]) async {
-    final result = await methodChannel.invokeMethod<bool>('requestPermission', {
-      'types': types?.map((type) => type.name).toList(),
-    });
-    return result ?? false;
-  }
-
-  @override
-  Future<bool> isPermissionGranted([Set<InputType>? types]) async {
+  Future<bool> requestPermission(Set<InputType> types) async {
     final result = await methodChannel.invokeMethod<bool>(
-      'isPermissionGranted',
-      {'types': types?.map((type) => type.name).toList()},
+      'requestPermission',
+      {'types': types.map((type) => type.name).toList()},
     );
     return result ?? false;
   }
 
   @override
-  Stream<Map<String, dynamic>> inputs([Set<InputType>? types]) {
+  Future<bool> isPermissionGranted(Set<InputType> types) async {
+    final result = await methodChannel.invokeMethod<bool>(
+      'isPermissionGranted',
+      {'types': types.map((type) => type.name).toList()},
+    );
+    return result ?? false;
+  }
+
+  @override
+  Stream<Map<String, dynamic>> inputs(Set<InputType> types) {
     // Pass the types parameter to the native platform for filtering
     return _inputsEventChannel
-        .receiveBroadcastStream(
-          {'types': types?.map((type) => type.name).toList()},
-        )
-        .map(
-          (event) => Map<String, dynamic>.from(event),
-        );
+        .receiveBroadcastStream({
+          'types': types.map((type) => type.name).toList(),
+        })
+        .map((event) => Map<String, dynamic>.from(event));
   }
 
   @override
@@ -61,20 +60,12 @@ class MethodChannelKvmHelper extends KvmHelperPlatform {
   }
 
   @override
-  Future<bool> setInputBlocked(bool blocked, [Set<InputType>? types]) async {
-    final result = await methodChannel.invokeMethod<bool>('setInputBlocked', {
-      'blocked': blocked,
-      'types': types?.map((type) => type.name).toList(),
-    });
+  Future<bool> setBlockedInputs(Set<InputType> types) async {
+    final result = await methodChannel.invokeMethod<bool>(
+      'setBlockedInputs',
+      {'types': types.map((type) => type.name).toList()},
+    );
     return result ?? false;
-  }
-
-  @override
-  Future<bool> isInputBlocked([Set<InputType>? types]) async {
-    final inputs = await getBlockedInputs();
-    return types == null
-        ? inputs.isNotEmpty
-        : inputs.any((type) => types.contains(type));
   }
 
   @override
@@ -104,10 +95,7 @@ class MethodChannelKvmHelper extends KvmHelperPlatform {
     return _monitorsEventChannel.receiveBroadcastStream().map((event) {
       final List<dynamic> monitorsList = event as List<dynamic>;
       return monitorsList
-          .map(
-            (monitorJson) =>
-                Monitor.fromJson(Map<String, dynamic>.from(monitorJson)),
-          )
+          .map((json) => Monitor.fromJson(Map.from(json)))
           .toList();
     });
   }

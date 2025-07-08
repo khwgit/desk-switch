@@ -35,7 +35,7 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
            let typesList = args["types"] as? [String] {
           instance?.allowedInputTypes = Set(typesList.compactMap { InputType(rawValue: $0) })
         } else {
-          // If no types specified, allow all types
+          // Fallback to all types if parsing fails
           instance?.allowedInputTypes = Set(InputType.allCases)
         }
         instance?.startEventTap()
@@ -73,8 +73,8 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
       injectMouseInput(call: call, result: result)
     case "injectKeyboardInput":
       injectKeyboardInput(call: call, result: result)
-    case "setInputBlocked":
-      setInputBlocked(call: call, result: result)
+    case "setBlockedInputs":
+      setBlockedInputs(call: call, result: result)
     case "getBlockedInputs":
       getBlockedInputs(call: call, result: result)
     default:
@@ -369,45 +369,26 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
     result(nil)
   }
 
-  private func setInputBlocked(call: FlutterMethodCall, result: @escaping FlutterResult) {
-    guard let args = call.arguments as? [String: Any],
-          let blocked = args["blocked"] as? Bool else {
-      result(FlutterError(code: "INVALID_ARGUMENTS", message: "Invalid arguments", details: nil))
-      return
-    }
-    
-    let typesList = args["types"] as? [String]
-    
+  private func setBlockedInputs(call: FlutterMethodCall, result: @escaping FlutterResult) {
+    let args = call.arguments as? [String: Any]
+    let typesList = args?["types"] as? [String]
+
+    // Convert typesList to [InputType], fallback to allCases
+    let inputTypes: [InputType]
     if let typesList = typesList {
-      // Block specific input types
-      for typeString in typesList {
-        if let inputType = InputType(rawValue: typeString) {
-          if blocked {
-            blockedInputTypes.insert(inputType)
-          } else {
-            blockedInputTypes.remove(inputType)
-          }
-        } else {
-          result(FlutterError(code: "INVALID_INPUT_TYPE", message: "Invalid input type: \(typeString)", details: nil))
-          return
-        }
-      }
+      inputTypes = typesList.compactMap { InputType(rawValue: $0) }
     } else {
-      // Block all inputs or unblock all inputs
-      if blocked {
-        blockedInputTypes = Set(InputType.allCases)
-      } else {
-        blockedInputTypes.removeAll()
-      }
+      inputTypes = []
     }
-    
+    blockedInputTypes = Set(inputTypes)
+
     // Update cursor visibility based on current blockedInputTypes state
     if blockedInputTypes.contains(.mouse) {
       hideCursor()
     } else {
       showCursor()
     }
-    
+
     result(true)
   }
 

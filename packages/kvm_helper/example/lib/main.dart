@@ -278,7 +278,7 @@ class _MyAppState extends State<MyApp> {
       _addInputEvent('Blocking all inputs for 3 seconds...');
 
       // Block all inputs
-      await _kvmHelperPlugin.setInputBlocked(true);
+      await _kvmHelperPlugin.blockInputs();
 
       // Show current blocked inputs
       final blockedInputs = await _kvmHelperPlugin.getBlockedInputs();
@@ -290,7 +290,7 @@ class _MyAppState extends State<MyApp> {
       await Future.delayed(const Duration(seconds: 3));
 
       // Unblock all inputs
-      await _kvmHelperPlugin.setInputBlocked(false);
+      await _kvmHelperPlugin.unblockInputs();
 
       _addInputEvent('Input blocking completed');
     } catch (e) {
@@ -308,7 +308,7 @@ class _MyAppState extends State<MyApp> {
       _addInputEvent('Blocking mouse input for 3 seconds...');
 
       // Block mouse input
-      await _kvmHelperPlugin.setInputBlocked(true, {InputType.mouse});
+      await _kvmHelperPlugin.blockInputs({InputType.mouse});
 
       // Show current blocked inputs
       final blockedInputs = await _kvmHelperPlugin.getBlockedInputs();
@@ -320,7 +320,7 @@ class _MyAppState extends State<MyApp> {
       await Future.delayed(const Duration(seconds: 3));
 
       // Unblock mouse input
-      await _kvmHelperPlugin.setInputBlocked(false, {InputType.mouse});
+      await _kvmHelperPlugin.unblockInputs({InputType.mouse});
 
       _addInputEvent('Mouse blocking completed');
     } catch (e) {
@@ -338,7 +338,7 @@ class _MyAppState extends State<MyApp> {
       _addInputEvent('Blocking keyboard input for 3 seconds...');
 
       // Block keyboard input
-      await _kvmHelperPlugin.setInputBlocked(true, {InputType.keyboard});
+      await _kvmHelperPlugin.blockInputs({InputType.keyboard});
 
       // Show current blocked inputs
       final blockedInputs = await _kvmHelperPlugin.getBlockedInputs();
@@ -350,7 +350,7 @@ class _MyAppState extends State<MyApp> {
       await Future.delayed(const Duration(seconds: 3));
 
       // Unblock keyboard input
-      await _kvmHelperPlugin.setInputBlocked(false, {InputType.keyboard});
+      await _kvmHelperPlugin.unblockInputs({InputType.keyboard});
 
       _addInputEvent('Keyboard blocking completed');
     } catch (e) {

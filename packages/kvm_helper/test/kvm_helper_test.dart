@@ -8,14 +8,13 @@ class MockKvmHelperPlatform
     with MockPlatformInterfaceMixin
     implements KvmHelperPlatform {
   @override
-  Future<bool> requestPermission([Set<InputType>? types]) => Future.value(true);
+  Future<bool> requestPermission(Set<InputType> types) => Future.value(true);
 
   @override
-  Future<bool> isPermissionGranted([Set<InputType>? types]) =>
-      Future.value(true);
+  Future<bool> isPermissionGranted(Set<InputType> types) => Future.value(true);
 
   @override
-  Stream<Map<String, dynamic>> inputs([Set<InputType>? types]) =>
+  Stream<Map<String, dynamic>> inputs(Set<InputType> types) =>
       const Stream.empty();
 
   @override
@@ -25,11 +24,7 @@ class MockKvmHelperPlatform
   Future<void> injectKeyboardInput(KeyboardInput input) => Future.value();
 
   @override
-  Future<bool> setInputBlocked(bool blocked, [Set<InputType>? types]) =>
-      Future.value(true);
-
-  @override
-  Future<bool> isInputBlocked([Set<InputType>? types]) => Future.value(false);
+  Future<bool> setBlockedInputs(Set<InputType> types) => Future.value(true);
 
   @override
   Future<Set<InputType>> getBlockedInputs() => Future.value(<InputType>{});

@@ -25,22 +25,18 @@ abstract class KvmHelperPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  /// Requests permission to capture and inject input events.
-  /// When [types] is null, requests all input capture and injection permissions.
-  Future<bool> requestPermission([Set<InputType>? types]) {
+  /// Requests permissions for the given types of input events.
+  Future<bool> requestPermission(Set<InputType> types) {
     throw UnimplementedError('requestPermission() has not been implemented.');
   }
 
-  /// Checks if permission is granted.
-  /// When [types] is null, returns false if any input capture and injection permission is not granted.
-  Future<bool> isPermissionGranted([Set<InputType>? types]) {
+  /// Checks if all permissions for the given types are granted.
+  Future<bool> isPermissionGranted(Set<InputType> types) {
     throw UnimplementedError('isPermissionGranted() has not been implemented.');
   }
 
-  /// Stream of all input events from the unified channel.
-  /// When [types] is null, returns all input events.
-  /// When [types] is provided, filters to only the specified input types.
-  Stream<Map<String, dynamic>> inputs([Set<InputType>? types]) {
+  /// Stream of input events as raw JSON data from the unified channel.
+  Stream<Map<String, dynamic>> inputs(Set<InputType> types) {
     throw UnimplementedError('inputs() has not been implemented.');
   }
 
@@ -54,16 +50,9 @@ abstract class KvmHelperPlatform extends PlatformInterface {
     throw UnimplementedError('injectKeyboardInput() has not been implemented.');
   }
 
-  /// Sets whether input should be blocked.
-  /// When [types] is null, blocks all inputs.
-  Future<bool> setInputBlocked(bool blocked, [Set<InputType>? types]) {
-    throw UnimplementedError('setInputBlocked() has not been implemented.');
-  }
-
-  /// Checks if input is blocked.
-  /// When [types] is null, returns true if any input is blocked.
-  Future<bool> isInputBlocked([Set<InputType>? types]) {
-    throw UnimplementedError('isInputBlocked() has not been implemented.');
+  /// Sets whether inputs should be blocked.
+  Future<bool> setBlockedInputs(Set<InputType> types) {
+    throw UnimplementedError('setBlockedInputs() has not been implemented.');
   }
 
   /// Returns the set of currently blocked input types.
