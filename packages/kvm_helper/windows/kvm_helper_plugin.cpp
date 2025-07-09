@@ -28,9 +28,9 @@ namespace kvm_helper
 
     HHOOK keyboard_hook = nullptr;
     HHOOK mouse_hook = nullptr;
-    std::thread hook_thread;
+    std::thread input_thread;
     std::atomic<bool> running{false};
-    std::mutex hook_mutex;
+    std::mutex input_mutex;
 
     // Input blocking state
     std::set<std::string> blocked_input_types;
@@ -43,8 +43,65 @@ namespace kvm_helper
     std::mutex allowed_input_mutex;
 
     // Monitor detection
-    HWND monitor_hwnd = nullptr;
-    WNDPROC original_wndproc = nullptr;
+    std::mutex monitor_mutex;
+    int monitor_wndproc_id = -1;
+
+    // Monitor helper functions
+    void SendMonitorList(UINT messageType = 0)
+    {
+      if (!monitor_sink)
+        return;
+
+      std::vector<flutter::EncodableValue> monitors;
+
+      // Enumerate all monitors
+      EnumDisplayMonitors(nullptr, nullptr, [](HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) -> BOOL
+                          {
+          auto monitors_ptr = reinterpret_cast<std::vector<flutter::EncodableValue>*>(dwData);
+          
+          MONITORINFOEX monitorInfo;
+          monitorInfo.cbSize = sizeof(MONITORINFOEX);
+          if (GetMonitorInfo(hMonitor, &monitorInfo))
+          {
+            flutter::EncodableMap monitor;
+            // Convert wide string to UTF-8 std::string using Windows API
+            std::wstring ws(monitorInfo.szDevice);
+            int size_needed = WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, NULL, 0, NULL, NULL);
+            std::string deviceName(size_needed, 0);
+            WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, &deviceName[0], size_needed, NULL, NULL);
+            // Remove the null terminator added by WideCharToMultiByte
+            if (!deviceName.empty() && deviceName.back() == '\0') deviceName.pop_back();
+            monitor[flutter::EncodableValue("id")] = flutter::EncodableValue(deviceName);
+            monitor[flutter::EncodableValue("name")] = flutter::EncodableValue(deviceName);
+            monitor[flutter::EncodableValue("x")] = flutter::EncodableValue((double)monitorInfo.rcMonitor.left);
+            monitor[flutter::EncodableValue("y")] = flutter::EncodableValue((double)monitorInfo.rcMonitor.top);
+            monitor[flutter::EncodableValue("width")] = flutter::EncodableValue((double)(monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left));
+            monitor[flutter::EncodableValue("height")] = flutter::EncodableValue((double)(monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top));
+            monitor[flutter::EncodableValue("isPrimary")] = flutter::EncodableValue((monitorInfo.dwFlags & MONITORINFOF_PRIMARY) != 0);
+            monitor[flutter::EncodableValue("scaleFactor")] = flutter::EncodableValue(1.0); // Default scale factor
+            
+            monitors_ptr->emplace_back(flutter::EncodableValue(monitor));
+          }
+          return TRUE; }, reinterpret_cast<LPARAM>(&monitors));
+
+      monitor_sink->Success(flutter::EncodableValue(monitors));
+    }
+
+    // Window procedure to handle monitor changes
+    std::optional<LRESULT> CALLBACK MonitorWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+    {
+      std::optional<LRESULT> result = std::nullopt;
+      switch (uMsg)
+      {
+      case WM_DISPLAYCHANGE:
+        SendMonitorList(uMsg);
+        break;
+      default:
+        break;
+      }
+
+      return result;
+    }
 
     LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
     {
@@ -149,6 +206,10 @@ namespace kvm_helper
           type = "scrollWheel";
           deltaY = GET_WHEEL_DELTA_WPARAM(p->mouseData);
           break;
+        case WM_MOUSEHWHEEL:
+          type = "scrollWheel";
+          deltaX = GET_WHEEL_DELTA_WPARAM(p->mouseData);
+          break;
         case WM_MBUTTONDOWN:
           type = "otherMouseDown";
           button = "center";
@@ -197,12 +258,11 @@ namespace kvm_helper
       return CallNextHookEx(nullptr, nCode, wParam, lParam);
     }
 
-    void HookThreadProc()
+    void InputThreadProc()
     {
       keyboard_hook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, nullptr, 0);
       mouse_hook = SetWindowsHookEx(WH_MOUSE_LL, MouseProc, nullptr, 0);
       MSG msg;
-      running = true;
       while (running && GetMessage(&msg, nullptr, 0, 0))
       {
         TranslateMessage(&msg);
@@ -213,29 +273,6 @@ namespace kvm_helper
       if (mouse_hook)
         UnhookWindowsHookEx(mouse_hook);
     }
-
-    void StartHooks()
-    {
-      std::lock_guard<std::mutex> lock(hook_mutex);
-      if (!running)
-      {
-        running = true;
-        hook_thread = std::thread(HookThreadProc);
-      }
-    }
-
-    void StopHooks()
-    {
-      std::lock_guard<std::mutex> lock(hook_mutex);
-      if (running)
-      {
-        running = false;
-        PostThreadMessage(GetThreadId(hook_thread.native_handle()), WM_QUIT, 0, 0);
-        if (hook_thread.joinable())
-          hook_thread.join();
-      }
-    }
-
   } // namespace
 
   // static
@@ -247,15 +284,15 @@ namespace kvm_helper
             registrar->messenger(), "kvm_helper",
             &flutter::StandardMethodCodec::GetInstance());
 
-    auto plugin = std::make_unique<KvmHelperPlugin>();
+    auto plugin = std::make_unique<KvmHelperPlugin>(registrar);
 
     // Single input event channel
     auto input_channel = std::make_unique<flutter::EventChannel<flutter::EncodableValue>>(
         registrar->messenger(), "kvm_helper/inputs",
         &flutter::StandardMethodCodec::GetInstance());
     auto input_handler = std::make_unique<flutter::StreamHandlerFunctions<flutter::EncodableValue>>(
-        [](const flutter::EncodableValue *arguments,
-           std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> &&events)
+        [plugin_pointer = plugin.get()](const flutter::EncodableValue *arguments,
+                                        std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> &&events)
             -> std::unique_ptr<flutter::StreamHandlerError<flutter::EncodableValue>>
         {
           input_sink = std::move(events);
@@ -279,14 +316,14 @@ namespace kvm_helper
             }
           }
 
-          StartHooks();
+          plugin_pointer->StartInputDetection();
           return nullptr;
         },
-        [](const flutter::EncodableValue *arguments)
+        [plugin_pointer = plugin.get()](const flutter::EncodableValue *arguments)
             -> std::unique_ptr<flutter::StreamHandlerError<flutter::EncodableValue>>
         {
           input_sink.reset();
-          StopHooks();
+          plugin_pointer->StopInputDetection();
           return nullptr;
         });
     input_channel->SetStreamHandler(std::move(input_handler));
@@ -297,19 +334,19 @@ namespace kvm_helper
         &flutter::StandardMethodCodec::GetInstance());
 
     auto monitor_handler = std::make_unique<flutter::StreamHandlerFunctions<flutter::EncodableValue>>(
-        [](const flutter::EncodableValue *arguments,
-           std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> &&events)
+        [plugin_pointer = plugin.get()](const flutter::EncodableValue *arguments,
+                                        std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> &&events)
             -> std::unique_ptr<flutter::StreamHandlerError<flutter::EncodableValue>>
         {
           monitor_sink = std::move(events);
-          // Send initial monitor list
-          SendMonitorList();
+          plugin_pointer->StartMonitorDetection();
           return nullptr;
         },
-        [](const flutter::EncodableValue *arguments)
+        [plugin_pointer = plugin.get()](const flutter::EncodableValue *arguments)
             -> std::unique_ptr<flutter::StreamHandlerError<flutter::EncodableValue>>
         {
           monitor_sink.reset();
+          plugin_pointer->StopMonitorDetection();
           return nullptr;
         });
     monitor_channel->SetStreamHandler(std::move(monitor_handler));
@@ -323,11 +360,60 @@ namespace kvm_helper
     registrar->AddPlugin(std::move(plugin));
   }
 
-  KvmHelperPlugin::KvmHelperPlugin() {}
+  KvmHelperPlugin::KvmHelperPlugin(flutter::PluginRegistrarWindows *registrar)
+      : registrar(registrar) {}
 
   KvmHelperPlugin::~KvmHelperPlugin()
   {
-    StopHooks();
+    StopInputDetection();
+    StopMonitorDetection();
+  }
+
+  void KvmHelperPlugin::StartMonitorDetection()
+  {
+    std::lock_guard<std::mutex> lock(monitor_mutex);
+    if (monitor_wndproc_id == -1)
+    {
+      // Send initial monitor list
+      SendMonitorList();
+      monitor_wndproc_id = registrar->RegisterTopLevelWindowProcDelegate(
+          [](HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+          {
+            return MonitorWndProc(hWnd, message, wParam, lParam);
+          });
+    }
+  }
+
+  void KvmHelperPlugin::StopMonitorDetection()
+  {
+    std::lock_guard<std::mutex> lock(monitor_mutex);
+    if (monitor_wndproc_id != -1)
+    {
+      registrar->UnregisterTopLevelWindowProcDelegate(monitor_wndproc_id);
+      monitor_wndproc_id = -1;
+    }
+  }
+
+  void KvmHelperPlugin::StartInputDetection()
+  {
+    std::lock_guard<std::mutex> lock(input_mutex);
+    if (!running)
+    {
+      running = true;
+      input_thread = std::thread(InputThreadProc);
+    }
+  }
+
+  void KvmHelperPlugin::StopInputDetection()
+  {
+    std::lock_guard<std::mutex> lock(input_mutex);
+    if (running)
+    {
+      running = false;
+      PostThreadMessage(GetThreadId(input_thread.native_handle()), WM_QUIT, 0, 0);
+      if (input_thread.joinable())
+        input_thread.join();
+    }
   }
 
   void KvmHelperPlugin::HandleMethodCall(
@@ -369,27 +455,43 @@ namespace kvm_helper
 
         if (type == "leftMouseDown" || type == "leftMouseUp" ||
             type == "rightMouseDown" || type == "rightMouseUp" ||
-            type == "mouseMoved")
+            type == "otherMouseDown" || type == "otherMouseUp" ||
+            type == "mouseMoved" || type == "leftMouseDragged" ||
+            type == "rightMouseDragged" || type == "otherMouseDragged")
         {
           input.mi.dx = absX;
           input.mi.dy = absY;
           input.mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE;
-          if (type == "leftMouseDown")
+          if (type == "leftMouseDown" || type == "leftMouseDragged")
             input.mi.dwFlags |= MOUSEEVENTF_LEFTDOWN;
           if (type == "leftMouseUp")
             input.mi.dwFlags |= MOUSEEVENTF_LEFTUP;
-          if (type == "rightMouseDown")
+          if (type == "rightMouseDown" || type == "rightMouseDragged")
             input.mi.dwFlags |= MOUSEEVENTF_RIGHTDOWN;
           if (type == "rightMouseUp")
             input.mi.dwFlags |= MOUSEEVENTF_RIGHTUP;
+          if (type == "otherMouseDown" || type == "otherMouseDragged")
+            input.mi.dwFlags |= MOUSEEVENTF_MIDDLEDOWN;
+          if (type == "otherMouseUp")
+            input.mi.dwFlags |= MOUSEEVENTF_MIDDLEUP;
           SendInput(1, &input, sizeof(INPUT));
         }
         else if (type == "scrollWheel")
         {
-          input.mi.dwFlags = MOUSEEVENTF_WHEEL;
+          // Handle vertical scroll
           if (args.count(flutter::EncodableValue("deltaY")))
+          {
+            input.mi.dwFlags = MOUSEEVENTF_WHEEL;
             input.mi.mouseData = static_cast<DWORD>(std::get<double>(args.at(flutter::EncodableValue("deltaY"))));
-          SendInput(1, &input, sizeof(INPUT));
+            SendInput(1, &input, sizeof(INPUT));
+          }
+          // Handle horizontal scroll
+          if (args.count(flutter::EncodableValue("deltaX")))
+          {
+            input.mi.dwFlags = MOUSEEVENTF_HWHEEL;
+            input.mi.mouseData = static_cast<DWORD>(std::get<double>(args.at(flutter::EncodableValue("deltaX"))));
+            SendInput(1, &input, sizeof(INPUT));
+          }
         }
         // Add more cases as needed
         result->Success();
@@ -477,18 +579,16 @@ namespace kvm_helper
         result->Error("INVALID_ARGUMENTS", "Invalid keyboard event arguments");
       }
     }
-    else if (method_call.method_name().compare("setInputBlocked") == 0)
+    else if (method_call.method_name().compare("setBlockedInputs") == 0)
     {
+      // Arguments should only contain 'types'. If null, clear blocked_input_types.
+      std::lock_guard<std::mutex> lock(blocked_input_mutex);
+      blocked_input_types.clear();
+      bool mouse_should_be_blocked = false;
+
       if (method_call.arguments() && std::holds_alternative<flutter::EncodableMap>(*method_call.arguments()))
       {
         const auto &args = std::get<flutter::EncodableMap>(*method_call.arguments());
-        bool blocked = false;
-        if (args.count(flutter::EncodableValue("blocked")))
-          blocked = std::get<bool>(args.at(flutter::EncodableValue("blocked")));
-
-        std::lock_guard<std::mutex> lock(blocked_input_mutex);
-        bool mouse_should_be_blocked = false;
-
         if (args.count(flutter::EncodableValue("types")))
         {
           const auto &types = std::get<std::vector<flutter::EncodableValue>>(args.at(flutter::EncodableValue("types")));
@@ -496,50 +596,32 @@ namespace kvm_helper
           {
             if (std::holds_alternative<std::string>(type))
             {
-              std::string typeStr = std::get<std::string>(type);
-              if (blocked)
-                blocked_input_types.insert(typeStr);
-              else
-                blocked_input_types.erase(typeStr);
+              const std::string &typeStr = std::get<std::string>(type);
+              blocked_input_types.insert(typeStr);
+              if (typeStr == "mouse")
+              {
+                mouse_should_be_blocked = true;
+              }
             }
           }
         }
-        else
-        {
-          // Block/unblock all inputs
-          if (blocked)
-          {
-            blocked_input_types.insert("keyboard");
-            blocked_input_types.insert("mouse");
-          }
-          else
-          {
-            blocked_input_types.clear();
-          }
-        }
+      }
 
-        mouse_should_be_blocked = blocked_input_types.find("mouse") != blocked_input_types.end();
-        // Hide or show cursor as needed
-        if (mouse_should_be_blocked && !cursor_hidden)
-        {
-          while (ShowCursor(FALSE) >= 0)
-          {
-          }
-          cursor_hidden = true;
-        }
-        else if (!mouse_should_be_blocked && cursor_hidden)
-        {
-          while (ShowCursor(TRUE) < 0)
-          {
-          }
-          cursor_hidden = false;
-        }
-        result->Success(true);
-      }
-      else
+      if (mouse_should_be_blocked && !cursor_hidden)
       {
-        result->Error("INVALID_ARGUMENTS", "Invalid arguments for setInputBlocked");
+        while (ShowCursor(FALSE) >= 0)
+        {
+        }
+        cursor_hidden = true;
       }
+      else if (!mouse_should_be_blocked && cursor_hidden)
+      {
+        while (ShowCursor(TRUE) < 0)
+        {
+        }
+        cursor_hidden = false;
+      }
+      result->Success(true);
     }
     else if (method_call.method_name().compare("getBlockedInputs") == 0)
     {
@@ -554,51 +636,6 @@ namespace kvm_helper
     else
     {
       result->NotImplemented();
-    }
-
-    // Monitor helper functions
-    void SendMonitorList()
-    {
-      if (!monitor_sink)
-        return;
-
-      std::vector<flutter::EncodableValue> monitors;
-
-      // Enumerate all monitors
-      EnumDisplayMonitors(nullptr, nullptr, [](HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) -> BOOL
-                          {
-          auto monitors_ptr = reinterpret_cast<std::vector<flutter::EncodableValue>*>(dwData);
-          
-          MONITORINFOEX monitorInfo;
-          monitorInfo.cbSize = sizeof(MONITORINFOEX);
-          if (GetMonitorInfo(hMonitor, &monitorInfo))
-          {
-            flutter::EncodableMap monitor;
-            monitor[flutter::EncodableValue("id")] = flutter::EncodableValue(monitorInfo.szDevice);
-            monitor[flutter::EncodableValue("name")] = flutter::EncodableValue(monitorInfo.szDevice);
-            monitor[flutter::EncodableValue("x")] = flutter::EncodableValue((double)monitorInfo.rcMonitor.left);
-            monitor[flutter::EncodableValue("y")] = flutter::EncodableValue((double)monitorInfo.rcMonitor.top);
-            monitor[flutter::EncodableValue("width")] = flutter::EncodableValue((double)(monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left));
-            monitor[flutter::EncodableValue("height")] = flutter::EncodableValue((double)(monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top));
-            monitor[flutter::EncodableValue("isPrimary")] = flutter::EncodableValue((monitorInfo.dwFlags & MONITORINFOF_PRIMARY) != 0);
-            monitor[flutter::EncodableValue("scaleFactor")] = flutter::EncodableValue(1.0); // Default scale factor
-            
-            monitors_ptr->emplace_back(flutter::EncodableValue(monitor));
-          }
-          return TRUE; }, reinterpret_cast<LPARAM>(&monitors));
-
-      monitor_sink->Success(flutter::EncodableValue(monitors));
-    }
-
-    // Window procedure to handle monitor changes
-    LRESULT CALLBACK MonitorWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-    {
-      if (uMsg == WM_DISPLAYCHANGE)
-      {
-        // Monitor configuration changed, send updated list
-        SendMonitorList();
-      }
-      return CallWindowProc(original_wndproc, hwnd, uMsg, wParam, lParam);
     }
   }
 

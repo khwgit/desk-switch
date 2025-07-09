@@ -21,7 +21,7 @@ namespace kvm_helper
     public:
         static void RegisterWithRegistrar(flutter::PluginRegistrarWindows *registrar);
 
-        KvmHelperPlugin();
+        KvmHelperPlugin(flutter::PluginRegistrarWindows *registrar);
 
         virtual ~KvmHelperPlugin();
 
@@ -29,16 +29,19 @@ namespace kvm_helper
         KvmHelperPlugin(const KvmHelperPlugin &) = delete;
         KvmHelperPlugin &operator=(const KvmHelperPlugin &) = delete;
 
+        void StartMonitorDetection();
+        void StopMonitorDetection();
+
+        void StartInputDetection();
+        void StopInputDetection();
+
         // Called when a method is called on this plugin's channel from Dart.
         void HandleMethodCall(
             const flutter::MethodCall<flutter::EncodableValue> &method_call,
             std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
     private:
-        // Input blocking state
-        std::set<std::string> blocked_input_types_;
-        std::mutex blocked_input_mutex_;
-        std::atomic<bool> cursor_hidden_{false};
+        std::unique_ptr<flutter::PluginRegistrarWindows> registrar;
     };
 
 } // namespace kvm_helper
