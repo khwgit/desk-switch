@@ -110,14 +110,14 @@ await kvmHelper.injectInput(mouseInput);
 
 ```dart
 // Block all inputs
-await kvmHelper.setInputBlocked(true);
+await kvmHelper.blockInputs();
 
 // Block specific input types
-await kvmHelper.setInputBlocked(true, {InputType.keyboard});
-await kvmHelper.setInputBlocked(true, {InputType.mouse});
+await kvmHelper.blockInputs({InputType.keyboard});
+await kvmHelper.blockInputs({InputType.mouse});
 
 // Unblock inputs
-await kvmHelper.setInputBlocked(false);
+await kvmHelper.unblockInputs();
 
 // Check blocked inputs
 Set<InputType> blockedTypes = await kvmHelper.getBlockedInputs();
