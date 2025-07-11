@@ -1,4 +1,5 @@
 import 'package:desk_switch/models/input.dart';
+import 'package:desk_switch/models/message.pb.dart' as pb;
 import 'package:desk_switch/models/monitor.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -18,4 +19,44 @@ sealed class Message with _$Message {
   const Message._();
   factory Message.fromJson(Map<String, dynamic> json) =>
       _$MessageFromJson(json);
+}
+
+// Conversion between Dart Message model and protobuf
+extension MessageToProto on Message {
+  pb.Message toProto() {
+    return switch (this) {
+      InputMessage input =>
+        pb.Message()
+          ..kind = pb.MessageType.INPUT
+          ..input = (pb.InputMessage()..input = input.input.toProto()),
+      DeviceMessage device =>
+        pb.Message()
+          ..kind = pb.MessageType.DEVICE
+          ..device = (pb.DeviceMessage()
+            ..id = device.id
+            ..monitors.addAll(device.monitors.map((m) => m.toProto()))),
+    };
+  }
+}
+
+extension ProtoToMessage on pb.Message {
+  Message toModel() {
+    switch (kind) {
+      case pb.MessageType.INPUT:
+        if (hasInput()) {
+          return Message.input(input: input.input.toModel());
+        }
+        throw Exception('Message has INPUT kind but no input data');
+      case pb.MessageType.DEVICE:
+        if (hasDevice()) {
+          return Message.device(
+            id: device.id,
+            monitors: device.monitors.map((m) => m.toModel()).toList(),
+          );
+        }
+        throw Exception('Message has DEVICE kind but no device data');
+      default:
+        throw Exception('Unknown message type: $kind');
+    }
+  }
 }
