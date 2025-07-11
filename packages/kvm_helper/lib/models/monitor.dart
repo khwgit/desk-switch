@@ -13,8 +13,6 @@ abstract class Monitor with _$Monitor {
     required double y,
     required double width,
     required double height,
-    required bool isPrimary,
-    required double scaleFactor,
   }) = _Monitor;
 
   factory Monitor.fromJson(Map<String, dynamic> json) =>

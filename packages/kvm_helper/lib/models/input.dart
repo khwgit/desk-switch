@@ -16,10 +16,10 @@ sealed class Input with _$Input {
     required double x,
     required double y,
     required MouseInputType type,
+    MouseButton? button,
     @Default(0) double deltaX,
     @Default(0) double deltaY,
     @Default(0) double deltaZ,
-    MouseButton? button,
   }) = MouseInput;
 
   // const factory Input.clipboard({
@@ -27,6 +27,7 @@ sealed class Input with _$Input {
   //   required int timestamp,
   // }) = ClipboardInput;
 
+  const Input._();
   factory Input.fromJson(Map<String, dynamic> json) => _$InputFromJson(json);
 }
 

@@ -77,8 +77,6 @@ namespace kvm_helper
             monitor[flutter::EncodableValue("y")] = flutter::EncodableValue((double)monitorInfo.rcMonitor.top);
             monitor[flutter::EncodableValue("width")] = flutter::EncodableValue((double)(monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left));
             monitor[flutter::EncodableValue("height")] = flutter::EncodableValue((double)(monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top));
-            monitor[flutter::EncodableValue("isPrimary")] = flutter::EncodableValue((monitorInfo.dwFlags & MONITORINFOF_PRIMARY) != 0);
-            monitor[flutter::EncodableValue("scaleFactor")] = flutter::EncodableValue(1.0); // Default scale factor
             
             monitors_ptr->emplace_back(flutter::EncodableValue(monitor));
           }

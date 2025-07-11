@@ -502,8 +502,6 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
         "y": bounds.origin.y,
         "width": bounds.size.width,
         "height": bounds.size.height,
-        "isPrimary": index == 0, // First screen is typically primary
-        "scaleFactor": screen.backingScaleFactor
       ]
       
       monitors.append(monitor)

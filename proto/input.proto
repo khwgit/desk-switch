@@ -48,14 +48,14 @@ message KeyboardInput {
   int32 code = 1;
   KeyboardInputType type = 2;
   repeated KeyModifier modifiers = 3;
-  string character = 4;
+  optional string character = 4;
 }
 
 message MouseInput {
   double x = 1;
   double y = 2;
   MouseInputType type = 3;
-  MouseButton button = 4;
+  optional MouseButton button = 4;
   double deltaX = 5;
   double deltaY = 6;
   double deltaZ = 7;
