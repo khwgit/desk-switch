@@ -181,7 +181,7 @@ class _MyAppState extends State<MyApp> {
                 _currentCursorY = event.y;
                 _currentMonitorId = _monitors
                     .firstWhereOrNull(
-                      (monitor) => monitor.contains(x: event.x, y: event.y),
+                      (monitor) => monitor.contains(event.x, event.y),
                     )
                     ?.id;
               });

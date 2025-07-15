@@ -20,7 +20,7 @@ abstract class Monitor with _$Monitor {
 
   /// Checks if the given global cursor position is within this monitor's bounds.
   /// Returns true if the point (x, y) is inside the monitor, false otherwise.
-  bool contains({required double x, required double y}) {
+  bool contains(double x, double y) {
     return x >= this.x &&
         x <= this.x + width &&
         y >= this.y &&
