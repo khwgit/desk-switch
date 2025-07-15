@@ -1,12 +1,12 @@
 syntax = "proto3";
 package desk_switch;
 
-import "client.proto";
+import "device.proto";
 import "input.proto";
 
 enum MessageType {
   INPUT = 0;
-  CLIENT = 1;
+  DEVICE = 1;
 }
 
 // Message types for communication between client and server
@@ -14,7 +14,7 @@ message Message {
   MessageType kind = 1;
   oneof message {
     InputMessage input = 2;
-    ClientMessage client = 3;
+    DeviceMessage device = 3;
   }
 }
 
@@ -24,7 +24,6 @@ message InputMessage {
 }
 
 // Device message containing device information
-message ClientMessage {
-  string id = 1;
-  repeated Monitor monitors = 2;
+message DeviceMessage {
+  repeated Monitor monitors = 1;
 }
