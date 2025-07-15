@@ -76,6 +76,7 @@
 			"command": "dart run build_runner build --delete-conflicting-outputs",
 			"problemMatcher": [],
 			"detail": "Run build runner to generate code once",
+			"dependsOrder": "sequence",
 			"dependsOn": [
 				"generate l10n",
 				"generate proto"
@@ -87,6 +88,7 @@
 			"command": "dart run build_runner watch --delete-conflicting-outputs",
 			"problemMatcher": [],
 			"detail": "Run build runner to watch generating code",
+			"dependsOrder": "sequence",
 			"dependsOn": [
 				"generate l10n",
 				"generate proto"
