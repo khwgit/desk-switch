@@ -35,11 +35,14 @@ sealed class TransmitterState with _$TransmitterState {
 @riverpod
 class TransmitterService extends _$TransmitterService {
   HttpServer? _server;
+  final _clientsController = StreamController<List<ClientData>>.broadcast();
 
   @override
   TransmitterState build() {
     return const TransmitterState();
   }
+
+  Stream<List<ClientData>> clients() => _clientsController.stream;
 
   /// Start WebSocket server
   Future<ServerData?> start({
@@ -101,6 +104,7 @@ class TransmitterService extends _$TransmitterService {
                     .where((data) => data.id != client.id)
                     .toList(),
               );
+              _clientsController.add(state.clients);
             },
             onError: (error) {
               logger.error('❌ WebSocket error from ${client.name}: $error');
@@ -109,11 +113,13 @@ class TransmitterService extends _$TransmitterService {
                     .where((data) => data.id != client.id)
                     .toList(),
               );
+              _clientsController.add(state.clients);
             },
             cancelOnError: true,
           );
 
           state = state.copyWith(clients: [...state.clients, client]);
+          _clientsController.add(state.clients);
           logger.info(
             '🔌 Client connected: ${client.name} ([32m${state.clients.length}[0m total)',
           );
@@ -142,9 +148,11 @@ class TransmitterService extends _$TransmitterService {
     } catch (error) {
       logger.error('❌ Failed to start server: $error');
       state = const TransmitterState();
+      _clientsController.addError(error);
       rethrow;
     }
 
+    _clientsController.add(state.clients);
     return state.server;
   }
 
@@ -176,8 +184,8 @@ class TransmitterService extends _$TransmitterService {
     final client = state.clients.firstWhereOrNull(
       (client) => client.id == package.id,
     );
-    if (client == null) return;
 
+    if (client == null) return;
     client.socket?.add(package.message.toProto().writeToBuffer());
   }
 
