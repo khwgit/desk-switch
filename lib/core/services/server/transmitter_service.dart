@@ -39,6 +39,10 @@ class TransmitterService extends _$TransmitterService {
 
   @override
   TransmitterState build() {
+    ref.onDispose(() {
+      _clientsController.close();
+    });
+
     return const TransmitterState();
   }
 
