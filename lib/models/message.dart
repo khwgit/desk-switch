@@ -7,12 +7,23 @@ part 'message.freezed.dart';
 part 'message.g.dart';
 
 @freezed
-sealed class Message with _$Message {
-  const factory Message.input({
-    required Input input,
-  }) = InputMessage;
-  const factory Message.device({
+abstract class ClientPackage with _$ClientPackage {
+  const factory ClientPackage({
     required String id,
+    required Message message,
+  }) = _ClientPackage;
+
+  const ClientPackage._();
+  factory ClientPackage.fromJson(Map<String, dynamic> json) =>
+      _$ClientPackageFromJson(json);
+}
+
+@freezed
+sealed class Message with _$Message {
+  const factory Message.input(
+    Input input,
+  ) = InputMessage;
+  const factory Message.device({
     required List<Monitor> monitors,
   }) = DeviceMessage;
 
@@ -29,12 +40,11 @@ extension MessageToProto on Message {
         pb.Message()
           ..kind = pb.MessageType.INPUT
           ..input = (pb.InputMessage()..input = input.input.toProto()),
-      DeviceMessage device =>
+      DeviceMessage client =>
         pb.Message()
           ..kind = pb.MessageType.DEVICE
           ..device = (pb.DeviceMessage()
-            ..id = device.id
-            ..monitors.addAll(device.monitors.map((m) => m.toProto()))),
+            ..monitors.addAll(client.monitors.map((m) => m.toProto()))),
     };
   }
 }
@@ -44,13 +54,12 @@ extension ProtoToMessage on pb.Message {
     switch (kind) {
       case pb.MessageType.INPUT:
         if (hasInput()) {
-          return Message.input(input: input.input.toModel());
+          return Message.input(input.input.toModel());
         }
         throw Exception('Message has INPUT kind but no input data');
       case pb.MessageType.DEVICE:
         if (hasDevice()) {
           return Message.device(
-            id: device.id,
             monitors: device.monitors.map((m) => m.toModel()).toList(),
           );
         }

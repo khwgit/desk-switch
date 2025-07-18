@@ -2,42 +2,48 @@ import 'dart:async';
 
 import 'package:bonsoir/bonsoir.dart';
 import 'package:desk_switch/core/utils/logger.dart';
-import 'package:desk_switch/models/server_info.dart';
+import 'package:desk_switch/models/server_data.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+part 'discovery_service.freezed.dart';
 part 'discovery_service.g.dart';
 
-enum DiscoveryServiceState {
-  idle,
-  discovering,
+enum DiscoveryStateType {
+  initial,
+  running,
   stopping,
 }
 
-@Riverpod(keepAlive: true)
+@freezed
+abstract class DiscoveryState with _$DiscoveryState {
+  const factory DiscoveryState({
+    @Default(DiscoveryStateType.initial) DiscoveryStateType type,
+    @Default({}) Map<String, ServerData> servers,
+  }) = _DiscoveryState;
+
+  const DiscoveryState._();
+}
+
+@riverpod
 class DiscoveryService extends _$DiscoveryService {
   BonsoirDiscovery? _discovery;
-  StreamController<List<ServerInfo>>? _discoveryController;
   StreamSubscription? _discoverySubscription;
-  final Map<String, ServerInfo> _discoveredServers = {};
 
   @override
-  DiscoveryServiceState build() {
-    return DiscoveryServiceState.idle;
+  DiscoveryState build() {
+    return const DiscoveryState();
   }
 
-  /// Get the discovered servers stream
-  Stream<List<ServerInfo>> discover() async* {
-    if (state == DiscoveryServiceState.discovering) {
-      logger.info('🔍 Discovery already running, returning existing stream');
-      yield* _discoveryController!.stream;
+  /// Start discovery
+  Future<void> start() async {
+    if (state.type == DiscoveryStateType.running) {
+      logger.info('🔍 Discovery already running, returning');
       return;
     }
 
     logger.info('🚀 Starting discovery');
-    _discoveryController = StreamController<List<ServerInfo>>(
-      onCancel: stop,
-    );
-    state = DiscoveryServiceState.discovering;
+    state = state.copyWith(type: DiscoveryStateType.running);
     _discovery = BonsoirDiscovery(type: '_deskswitch._tcp');
     await _discovery!.ready;
     _discoverySubscription = _discovery!.eventStream?.listen((event) {
@@ -50,13 +56,13 @@ class DiscoveryService extends _$DiscoveryService {
               '📡 Found server: ${service.name}[${service.attributes['id']}]',
             );
             // Use id if available, otherwise fallback to name
-            final serverInfo = ServerInfo(
+            final serverInfo = ServerData(
               id: id,
               name: service.name,
-              isOnline: true,
             );
-            _discoveredServers[id] = serverInfo;
-            _discoveryController?.add(_discoveredServers.values.toList());
+            final updatedServers = Map<String, ServerData>.from(state.servers);
+            updatedServers[id] = serverInfo;
+            state = state.copyWith(servers: updatedServers);
             // TODO: only resolve when connected?
             service.resolve(_discovery!.serviceResolver);
           }
@@ -64,8 +70,9 @@ class DiscoveryService extends _$DiscoveryService {
         case BonsoirDiscoveryEventType.discoveryServiceLost:
           if (service != null) {
             logger.info('❌ Lost server: ${service.name}');
-            _discoveredServers.remove(id);
-            _discoveryController?.add(_discoveredServers.values.toList());
+            final updatedServers = Map<String, ServerData>.from(state.servers);
+            updatedServers.remove(id);
+            state = state.copyWith(servers: updatedServers);
           }
           break;
         case BonsoirDiscoveryEventType.discoveryServiceResolved:
@@ -75,15 +82,15 @@ class DiscoveryService extends _$DiscoveryService {
             );
             // Use id if available, otherwise fallback to name
             final id = service.attributes['id'] ?? service.name;
-            final updatedServer = ServerInfo(
+            final updatedServer = ServerData(
               id: id,
               name: service.name,
               host: service.host,
               port: int.tryParse(service.attributes['ws_port'] ?? '0'),
-              isOnline: true,
             );
-            _discoveredServers[id] = updatedServer;
-            _discoveryController?.add(_discoveredServers.values.toList());
+            final updatedServers = Map<String, ServerData>.from(state.servers);
+            updatedServers[id] = updatedServer;
+            state = state.copyWith(servers: updatedServers);
           }
           break;
         case BonsoirDiscoveryEventType.discoveryStarted:
@@ -106,26 +113,24 @@ class DiscoveryService extends _$DiscoveryService {
     });
 
     await _discovery!.start();
-    _discoveryController?.add([]); // Emit empty list when ready
-    yield* _discoveryController!.stream;
   }
 
   /// Stop discovery
   Future<void> stop() async {
-    if (state == DiscoveryServiceState.stopping) {
+    if (state.type == DiscoveryStateType.stopping) {
       logger.info('🛑 Discovery already stopping, returning');
       return;
     }
 
     logger.info('🛑 Stopping discovery');
-    state = DiscoveryServiceState.stopping;
+    state = state.copyWith(type: DiscoveryStateType.stopping);
     await _discoverySubscription?.cancel();
     _discoverySubscription = null;
-    await _discoveryController?.close();
-    _discoveryController = null;
     await _discovery?.stop();
     _discovery = null;
-    _discoveredServers.clear();
-    state = DiscoveryServiceState.idle;
+    state = state.copyWith(
+      type: DiscoveryStateType.initial,
+      servers: {},
+    );
   }
 }
