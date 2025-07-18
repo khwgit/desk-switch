@@ -26,6 +26,7 @@ dependencies:
   flutter_hooks:
   go_router: ^16.0.0
   go_router_maker: ^0.0.1
+  gap: ^3.0.1
 
   # Code generation
   freezed_annotation: ^3.1.0
@@ -46,11 +47,11 @@ dependencies:
   path_provider: ^2.1.5
   uuid: ^4.5.1
   intl: ^0.20.2
-  gap: ^3.0.1
   package_info_plus: ^8.3.0
   collection: ^1.19.1
   bonsoir: ^5.1.11
   kvm_helper: ^0.0.1
+  # cassowary: ^0.4.3
 
 dev_dependencies:
   flutter_test:
