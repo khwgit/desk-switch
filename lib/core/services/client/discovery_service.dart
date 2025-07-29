@@ -29,11 +29,19 @@ abstract class DiscoveryState with _$DiscoveryState {
 class DiscoveryService extends _$DiscoveryService {
   BonsoirDiscovery? _discovery;
   StreamSubscription? _discoverySubscription;
+  final _serversController = StreamController<List<ServerData>>.broadcast();
 
   @override
   DiscoveryState build() {
+    ref.onDispose(() {
+      _discoverySubscription?.cancel();
+      _serversController.close();
+    });
+
     return const DiscoveryState();
   }
+
+  Stream<List<ServerData>> servers() => _serversController.stream;
 
   /// Start discovery
   Future<void> start() async {
@@ -56,13 +64,11 @@ class DiscoveryService extends _$DiscoveryService {
               '📡 Found server: ${service.name}[${service.attributes['id']}]',
             );
             // Use id if available, otherwise fallback to name
-            final serverInfo = ServerData(
-              id: id,
-              name: service.name,
-            );
+            final data = ServerData(id: id, name: service.name);
             final updatedServers = Map<String, ServerData>.from(state.servers);
-            updatedServers[id] = serverInfo;
+            updatedServers[id] = data;
             state = state.copyWith(servers: updatedServers);
+            _serversController.add(updatedServers.values.toList());
             // TODO: only resolve when connected?
             service.resolve(_discovery!.serviceResolver);
           }
@@ -73,6 +79,7 @@ class DiscoveryService extends _$DiscoveryService {
             final updatedServers = Map<String, ServerData>.from(state.servers);
             updatedServers.remove(id);
             state = state.copyWith(servers: updatedServers);
+            _serversController.add(updatedServers.values.toList());
           }
           break;
         case BonsoirDiscoveryEventType.discoveryServiceResolved:
@@ -91,6 +98,7 @@ class DiscoveryService extends _$DiscoveryService {
             final updatedServers = Map<String, ServerData>.from(state.servers);
             updatedServers[id] = updatedServer;
             state = state.copyWith(servers: updatedServers);
+            _serversController.add(updatedServers.values.toList());
           }
           break;
         case BonsoirDiscoveryEventType.discoveryStarted:
@@ -113,6 +121,7 @@ class DiscoveryService extends _$DiscoveryService {
     });
 
     await _discovery!.start();
+    _serversController.add(state.servers.values.toList());
   }
 
   /// Stop discovery
@@ -128,9 +137,7 @@ class DiscoveryService extends _$DiscoveryService {
     _discoverySubscription = null;
     await _discovery?.stop();
     _discovery = null;
-    state = state.copyWith(
-      type: DiscoveryStateType.initial,
-      servers: {},
-    );
+    state = const DiscoveryState();
+    _serversController.add(state.servers.values.toList());
   }
 }

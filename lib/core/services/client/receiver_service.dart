@@ -44,7 +44,10 @@ class ReceiverService extends _$ReceiverService {
   Future<void> connect(ServerData server) async {
     disconnect(); // Clean up any previous connection
 
-    state = state.copyWith(type: ReceiverStateType.connecting, server: server);
+    state = state.copyWith(
+      type: ReceiverStateType.connecting,
+      server: server.copyWith(status: ServerStatus.connecting),
+    );
 
     try {
       final uri = Uri.parse('ws://${server.host}:${server.port}');
@@ -79,7 +82,10 @@ class ReceiverService extends _$ReceiverService {
         cancelOnError: true,
       );
 
-      state = state.copyWith(type: ReceiverStateType.connected);
+      state = state.copyWith(
+        type: ReceiverStateType.connected,
+        server: server.copyWith(status: ServerStatus.connected),
+      );
       logger.info('✅ Successfully connected to server: ${server.name}');
     } catch (error) {
       logger.error('❌ Failed to connect to server ${server.name}: $error');
@@ -103,7 +109,10 @@ class ReceiverService extends _$ReceiverService {
       logger.info('🔌 Disconnecting from server: ${state.server!.name}');
     }
 
-    state = state.copyWith(type: ReceiverStateType.disconnecting);
+    state = state.copyWith(
+      type: ReceiverStateType.disconnecting,
+      server: state.server?.copyWith(status: ServerStatus.disconnecting),
+    );
     await _subscription?.cancel();
     _subscription = null;
     await _socket?.close(WebSocketStatus.goingAway);

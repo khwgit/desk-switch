@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:desk_switch/core/services/system_service.dart';
 import 'package:desk_switch/core/utils/logger.dart';
 import 'package:desk_switch/models/client_data.dart';
@@ -26,7 +25,7 @@ enum TransmitterStateType {
 sealed class TransmitterState with _$TransmitterState {
   const factory TransmitterState({
     @Default(TransmitterStateType.initial) TransmitterStateType type,
-    @Default([]) List<ClientData> clients,
+    @Default({}) Map<String, ClientData> clients,
     ServerData? server,
     ClientPackage? package,
   }) = _TransmitterState;
@@ -103,29 +102,30 @@ class TransmitterService extends _$TransmitterService {
               }
             },
             onDone: () {
-              state = state.copyWith(
-                clients: state.clients
-                    .where((data) => data.id != client.id)
-                    .toList(),
+              final updatedClients = Map<String, ClientData>.from(
+                state.clients,
               );
-              _clientsController.add(state.clients);
+              updatedClients.remove(client.id);
+              state = state.copyWith(clients: updatedClients);
+              _clientsController.add(updatedClients.values.toList());
             },
             onError: (error) {
               logger.error('❌ WebSocket error from ${client.name}: $error');
-              state = state.copyWith(
-                clients: state.clients
-                    .where((data) => data.id != client.id)
-                    .toList(),
+              final updatedClients = Map<String, ClientData>.from(
+                state.clients,
               );
-              _clientsController.add(state.clients);
+              updatedClients.remove(client.id);
+              state = state.copyWith(clients: updatedClients);
+              _clientsController.add(updatedClients.values.toList());
             },
             cancelOnError: true,
           );
 
-          state = state.copyWith(clients: [...state.clients, client]);
-          _clientsController.add(state.clients);
+          final updatedClients = {...state.clients, client.id: client};
+          state = state.copyWith(clients: updatedClients);
+          _clientsController.add(updatedClients.values.toList());
           logger.info(
-            '🔌 Client connected: ${client.name} ([32m${state.clients.length}[0m total)',
+            '🔌 Client connected: ${client.name} ( [32m${state.clients.length} [0m total)',
           );
         } else {
           // Not a websocket request
@@ -156,7 +156,7 @@ class TransmitterService extends _$TransmitterService {
       rethrow;
     }
 
-    _clientsController.add(state.clients);
+    _clientsController.add(state.clients.values.toList());
     return state.server;
   }
 
@@ -185,10 +185,7 @@ class TransmitterService extends _$TransmitterService {
   }
 
   void send(ClientPackage package) async {
-    final client = state.clients.firstWhereOrNull(
-      (client) => client.id == package.id,
-    );
-
+    final client = state.clients[package.id];
     if (client == null) return;
     client.socket?.add(package.message.toProto().writeToBuffer());
   }
