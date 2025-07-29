@@ -1,34 +1,66 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:desk_switch/core/services/client_service.dart';
-import 'package:desk_switch/core/services/discovery_service.dart';
-import 'package:desk_switch/core/services/system_service.dart';
-import 'package:desk_switch/models/server_info.dart';
+import 'package:desk_switch/core/services/client/discovery_service.dart';
+import 'package:desk_switch/core/services/client/receiver_service.dart';
+import 'package:desk_switch/core/services/server/broadcast_service.dart';
+import 'package:desk_switch/features/shared/providers/client_providers.dart';
+import 'package:desk_switch/models/server_data.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'client_content_providers.g.dart';
 
 // Provider for the list of online servers (future: combine with pins)
-@Riverpod(keepAlive: true)
-Stream<List<ServerInfo>> servers(Ref ref) async* {
-  final discoveryService = ref.watch(discoveryServiceProvider.notifier);
-  // final clientService = ref.watch(clientServiceProvider.notifier);
-  final systemService = ref.watch(systemServiceProvider.notifier);
-  final currentMachineId = await systemService.getMachineId();
-  await Future.delayed(const Duration(milliseconds: 100));
-  yield* discoveryService.discover().asyncMap((serverList) {
-    return Future.value(
-      serverList.where((server) => server.id != currentMachineId).toList(),
-    );
+@riverpod
+Stream<List<ServerData>> servers(Ref ref) async* {
+  final localServerId = ref.watch(
+    broadcastServiceProvider.select(
+      (state) => state.config?.server.id,
+    ),
+  );
+  final connectedServer = ref.watch(
+    receiverServiceProvider.select(
+      (state) => state.server,
+    ),
+  );
+
+  await ref.read(clientProvider.notifier).start();
+  ref.onDispose(() async {
+    await ref.read(clientProvider.notifier).stop();
   });
+
+  List<ServerData> expander(ServerData data) {
+    if (data.id == localServerId) {
+      return []; // Don't show local server in the list
+    }
+    if (data.id == connectedServer?.id) {
+      return [data.copyWith(status: connectedServer?.status)];
+    }
+
+    return [data.copyWith(status: ServerStatus.online)];
+  }
+
+  yield* ref
+      .watch(discoveryServiceProvider.notifier)
+      .servers()
+      .map((servers) => servers.expand(expander).toList());
+}
+
+@riverpod
+ServerData? connectedServer(Ref ref) {
+  return ref.watch(
+    receiverServiceProvider.select(
+      (state) => state.server,
+    ),
+  );
 }
 
 // Notifier for selected server with availability checking
 @Riverpod(keepAlive: true)
 class SelectedServer extends _$SelectedServer {
   @override
-  ServerInfo? build() {
+  ServerData? build() {
     // Watch the servers stream to check availability
     ref.listen(serversProvider, (previous, next) {
       state = next.when(
@@ -43,20 +75,7 @@ class SelectedServer extends _$SelectedServer {
     return null;
   }
 
-  void select(ServerInfo? server) => state = server;
-}
-
-@Riverpod(keepAlive: true)
-class ConnectedServer extends _$ConnectedServer {
-  @override
-  ServerInfo? build() {
-    final clientService = ref.watch(clientServiceProvider.notifier);
-    ref.listen(clientServiceProvider, (previous, next) {
-      state = clientService.connectedServer;
-    });
-
-    return clientService.connectedServer;
-  }
+  void select(ServerData? server) => state = server;
 }
 
 // Notifier for pinned server IDs

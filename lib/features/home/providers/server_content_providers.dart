@@ -1,35 +1,27 @@
-import 'dart:async';
-
-import 'package:desk_switch/core/services/server_service.dart';
+import 'package:desk_switch/core/services/server/transmitter_service.dart';
 import 'package:desk_switch/core/services/system_service.dart';
-import 'package:desk_switch/models/client_info.dart';
-import 'package:desk_switch/models/server_info.dart';
+import 'package:desk_switch/models/client_data.dart';
+import 'package:desk_switch/models/server_profile.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'server_content_providers.g.dart';
 
 // Provider for clients
 @riverpod
-Stream<List<ClientInfo>> clients(Ref ref) async* {
-  final serverService = ref.watch(serverServiceProvider.notifier);
-  yield serverService.currentClients;
-  yield* serverService.clients();
+Stream<List<ClientData>> clients(Ref ref) {
+  return ref.watch(transmitterServiceProvider.notifier).clients();
 }
 
-// Provider for server name state
 @riverpod
-class ServerProfile extends _$ServerProfile {
-  @override
-  Future<ServerInfo> build() async {
-    final systemService = ref.watch(systemServiceProvider.notifier);
-    return ServerInfo(
-      id: await systemService.getMachineId(),
-      name: await systemService.getMachineName(),
-      // host: 'localhost',
-      port: 8080,
-      isOnline: false,
-    );
-  }
+Future<ServerProfile> serverProfile(Ref ref) async {
+  final systemService = ref.watch(systemServiceProvider.notifier);
+  final machineId = await systemService.getMachineId();
+  final machineName = await systemService.getMachineName();
+  return const ServerProfile(
+    // id: ref.watch(systemServiceProvider.notifier).getMachineId(),
+    // name: ref.watch(systemServiceProvider.notifier).getMachineName(),
+    // port: 8080,
+  );
 }
 
 // Provider for port configuration state
