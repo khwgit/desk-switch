@@ -1,12 +1,10 @@
-import 'package:desk_switch/core/services/client_service.dart'
-    show ClientServiceState;
-import 'package:desk_switch/core/services/server_service.dart'
-    show ServerServiceState;
 import 'package:desk_switch/features/home/providers/client_content_providers.dart';
-import 'package:desk_switch/features/home/providers/shared_providers.dart';
 import 'package:desk_switch/features/home/widgets/server_card.dart';
-import 'package:desk_switch/models/server_info.dart';
+import 'package:desk_switch/features/shared/providers/client_providers.dart';
+import 'package:desk_switch/features/shared/providers/server_providers.dart';
+import 'package:desk_switch/models/server_data.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -50,7 +48,13 @@ class _ServerList extends HookConsumerWidget {
     final pinnedNotifier = ref.watch(pinnedServersProvider.notifier);
     final onServerSelected = ref.watch(selectedServerProvider.notifier).select;
     final selectedServer = ref.watch(selectedServerProvider);
-    final connectedServer = ref.watch(connectedServerProvider);
+    final client = ref.watch(clientProvider.notifier);
+
+    useMemoized(
+      () => WidgetsBinding.instance.addPostFrameCallback(
+        (_) => client.start(),
+      ),
+    );
 
     return Card(
       child: Column(
@@ -68,7 +72,7 @@ class _ServerList extends HookConsumerWidget {
               const Spacer(),
               IconButton(
                 icon: const Icon(Icons.refresh),
-                onPressed: () => ref.invalidate(serversProvider),
+                onPressed: () => client.refresh(),
                 tooltip: 'Refresh',
               ),
               IconButton(
@@ -132,30 +136,17 @@ class _ServerList extends HookConsumerWidget {
                       final server = servers[index];
                       final isPinned = pinnedNotifier.isPinned(server.name);
 
-                      return Consumer(
-                        builder: (context, ref, child) {
-                          final clientState = ref.watch(
-                            clientStateProvider.select(
-                              (state) => connectedServer?.id == server.id
-                                  ? state
-                                  : ClientServiceState.disconnected,
-                            ),
-                          );
-
-                          return ServerCard(
-                            server: server,
-                            isSelected: selectedServer?.id == server.id,
-                            isPinned: isPinned,
-                            state: clientState,
-                            onTap: () => onServerSelected(server),
-                            onPinToggle: () {
-                              if (isPinned) {
-                                pinnedNotifier.unpin(server.name);
-                              } else {
-                                pinnedNotifier.pin(server.name);
-                              }
-                            },
-                          );
+                      return ServerCard(
+                        data: server,
+                        isSelected: selectedServer?.id == server.id,
+                        isPinned: isPinned,
+                        onTap: () => onServerSelected(server),
+                        onPinToggle: () {
+                          if (isPinned) {
+                            pinnedNotifier.unpin(server.name);
+                          } else {
+                            pinnedNotifier.pin(server.name);
+                          }
                         },
                       );
                     },
@@ -193,9 +184,7 @@ class _ServerList extends HookConsumerWidget {
                       ),
                       const Gap(16),
                       FilledButton.icon(
-                        onPressed: () {
-                          ref.invalidate(serversProvider);
-                        },
+                        onPressed: () => client.refresh(),
                         icon: const Icon(Icons.refresh),
                         label: const Text('Retry'),
                       ),
@@ -212,7 +201,7 @@ class _ServerList extends HookConsumerWidget {
 
   void _showAddServerDialog(
     BuildContext context,
-    ValueChanged<ServerInfo?> onServerSelected,
+    ValueChanged<ServerData?> onServerSelected,
   ) {
     final serverIpController = TextEditingController();
     final serverPortController = TextEditingController(text: '8080');
@@ -266,12 +255,11 @@ class _ServerList extends HookConsumerWidget {
                   : 'Manual Server';
 
               if (ip.isNotEmpty) {
-                final server = ServerInfo(
+                final server = ServerData(
                   id: const Uuid().v4(),
                   name: name,
                   host: ip,
                   port: port,
-                  isOnline: true,
                 );
                 onServerSelected(server);
                 Navigator.of(context).pop();
@@ -291,11 +279,11 @@ class _ServerInfo extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final selectedServer = ref.watch(selectedServerProvider);
+    final selected = ref.watch(selectedServerProvider);
 
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: selectedServer != null
+      child: selected != null
           ? Column(
               children: [
                 // Server Information
@@ -306,31 +294,33 @@ class _ServerInfo extends HookConsumerWidget {
                     children: [
                       const Gap(16),
                       Text(
-                        selectedServer.name,
+                        selected.name,
                         style: theme.textTheme.titleMedium,
                       ),
                       const Gap(16),
                       _InfoRow(
                         label: 'Host',
-                        value: selectedServer.host ?? 'Unknown',
+                        value: selected.host ?? 'Unknown',
                         icon: Icons.location_on,
                       ),
                       const Gap(8),
                       _InfoRow(
                         label: 'Port',
-                        value: selectedServer.port?.toString() ?? 'Unknown',
+                        value: selected.port?.toString() ?? 'Unknown',
                         icon: Icons.numbers,
                       ),
                       const Gap(8),
                       _InfoRow(
                         label: 'Status',
-                        value: selectedServer.isOnline ? 'Online' : 'Offline',
-                        icon: selectedServer.isOnline
-                            ? Icons.wifi
-                            : Icons.wifi_off,
-                        valueColor: selectedServer.isOnline
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.error,
+                        value: selected.status == ServerStatus.offline
+                            ? 'Offline'
+                            : 'Online',
+                        icon: selected.status == ServerStatus.offline
+                            ? Icons.wifi_off_outlined
+                            : Icons.wifi,
+                        valueColor: selected.status == ServerStatus.offline
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.primary,
                       ),
                     ],
                   ),
@@ -459,9 +449,9 @@ class _ConnectionStatus extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final connectedServer = ref.watch(connectedServerProvider);
-    final clientState = ref.watch(clientStateProvider);
+    final clientState = ref.watch(clientProvider);
 
-    final isConnected = clientState == ClientServiceState.connected;
+    final isConnected = clientState == ClientState.connected;
 
     return Card(
       child: Padding(
@@ -524,10 +514,10 @@ class _ConnectionButton extends HookConsumerWidget {
     final server = ref.watch(serverProvider.notifier);
     final client = ref.watch(clientProvider.notifier);
 
-    final clientState = ref.watch(clientStateProvider);
+    final clientState = ref.watch(clientProvider);
     final isServerRunning = ref.watch(
-      serverStateProvider.select(
-        (state) => state == ServerServiceState.running,
+      serverProvider.select(
+        (state) => state != ServerState.stopped,
       ),
     );
     const loadingIcon = SizedBox.square(
@@ -541,12 +531,12 @@ class _ConnectionButton extends HookConsumerWidget {
     VoidCallback? buttonAction;
 
     switch (clientState) {
-      case ClientServiceState.connecting:
+      case ClientState.connecting:
         buttonText = 'Connecting...';
         buttonIcon = loadingIcon;
         buttonAction = null;
         break;
-      case ClientServiceState.connected:
+      case ClientState.connected:
         if (selectedServer == null ||
             selectedServer.id == connectedServer?.id) {
           buttonText = 'Disconnect';
@@ -555,7 +545,7 @@ class _ConnectionButton extends HookConsumerWidget {
         } else {
           buttonText = 'Connect';
           buttonIcon = const Icon(Icons.play_arrow);
-          buttonAction = selectedServer.isOnline
+          buttonAction = selectedServer.status == ServerStatus.online
               ? () async {
                   // Show confirmation dialog for switching servers
                   final shouldSwitch = await _showSwitchServerDialog(
@@ -570,15 +560,17 @@ class _ConnectionButton extends HookConsumerWidget {
               : null;
         }
         break;
-      case ClientServiceState.disconnecting:
+      case ClientState.disconnecting:
         buttonText = 'Disconnecting...';
         buttonIcon = loadingIcon;
         buttonAction = null;
         break;
-      case ClientServiceState.disconnected:
+      case ClientState.disconnected:
         buttonText = 'Connect';
         buttonIcon = const Icon(Icons.play_arrow);
-        buttonAction = selectedServer != null && selectedServer.isOnline
+        buttonAction =
+            selectedServer != null &&
+                selectedServer.status == ServerStatus.online
             ? () async {
                 if (isServerRunning) {
                   final shouldStopServer = await _showStopServerDialog(context);

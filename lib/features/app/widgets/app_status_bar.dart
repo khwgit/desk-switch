@@ -72,15 +72,32 @@ class AppStatusBar extends HookConsumerWidget {
             statusText,
             style: theme.textTheme.bodyMedium?.copyWith(color: statusColor),
           ),
-          // // IP addresses
-          // if (appState.networkConfig != null) ...[
-          //   const Icon(Icons.network_check, size: 16),
-          //   const SizedBox(width: 4),
-          //   Text(
-          //     appState.networkConfig!.ipAddress,
-          //     style: theme.textTheme.bodyMedium,
-          //   ),
-          // ],
+          const Spacer(),
+          // Mode indicator
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: appStatus.isServerMode
+                  ? Colors.blue.withOpacity(0.1)
+                  : Colors.green.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: appStatus.isServerMode
+                    ? Colors.blue.withOpacity(0.3)
+                    : Colors.green.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              appStatus.isServerMode ? 'SERVER' : 'CLIENT',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: appStatus.isServerMode ? Colors.blue : Colors.green,
+                fontWeight: FontWeight.w600,
+                fontSize: 10,
+              ),
+            ),
+          ),
+          const Gap(12),
         ],
       ),
     );

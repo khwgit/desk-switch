@@ -1,22 +1,19 @@
-import 'package:desk_switch/core/services/client_service.dart';
-import 'package:desk_switch/models/server_info.dart';
+import 'package:desk_switch/models/server_data.dart';
 import 'package:flutter/material.dart';
 
 class ServerCard extends StatelessWidget {
   const ServerCard({
     super.key,
-    required this.server,
+    required this.data,
     required this.isPinned,
     required this.isSelected,
-    required this.state,
     required this.onTap,
     required this.onPinToggle,
   });
 
-  final ServerInfo server;
+  final ServerData data;
   final bool isPinned;
   final bool isSelected;
-  final ClientServiceState state;
   final VoidCallback onTap;
   final VoidCallback onPinToggle;
 
@@ -55,11 +52,11 @@ class ServerCard extends StatelessWidget {
         ],
       ),
       title: Text(
-        server.name,
+        data.name,
         style: theme.textTheme.titleSmall,
       ),
       subtitle: Text(
-        server.host ?? 'Unknown',
+        data.host ?? 'Unknown',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodySmall?.copyWith(
@@ -84,8 +81,8 @@ class ServerCard extends StatelessWidget {
   Widget _buildStatusIndicator(ThemeData theme) {
     const size = 10.0;
 
-    switch (state) {
-      case ClientServiceState.connected:
+    switch (data.status) {
+      case ServerStatus.connected:
         // Show blue connected icon
         return Container(
           width: size,
@@ -101,7 +98,8 @@ class ServerCard extends StatelessWidget {
             color: theme.colorScheme.surfaceContainerLow,
           ),
         );
-      case ClientServiceState.connecting:
+      case ServerStatus.connecting:
+      case ServerStatus.disconnecting:
         // Show loading animation for connecting state
         return SizedBox(
           width: size,
@@ -113,29 +111,27 @@ class ServerCard extends StatelessWidget {
             ),
           ),
         );
-      case ClientServiceState.disconnecting:
-      case ClientServiceState.disconnected:
-        if (server.isOnline) {
-          // Show green dot for online
-          return Container(
-            width: size,
-            height: size,
-            decoration: const BoxDecoration(
-              color: Colors.green,
-              shape: BoxShape.circle,
-            ),
-          );
-        } else {
-          // Show outline variant dot for offline
-          return Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.outlineVariant,
-              shape: BoxShape.circle,
-            ),
-          );
-        }
+      case ServerStatus.online:
+      case null:
+        // Show green dot for online
+        return Container(
+          width: size,
+          height: size,
+          decoration: const BoxDecoration(
+            color: Colors.green,
+            shape: BoxShape.circle,
+          ),
+        );
+      case ServerStatus.offline:
+        // Show outline variant dot for offline
+        return Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.outlineVariant,
+            shape: BoxShape.circle,
+          ),
+        );
     }
   }
 }

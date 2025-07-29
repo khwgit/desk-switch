@@ -8,6 +8,7 @@ abstract class ServerData with _$ServerData {
   const factory ServerData({
     required String id,
     required String name,
+    ServerStatus? status,
     String? host,
     int? port,
   }) = _ServerData;

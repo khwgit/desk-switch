@@ -1,7 +1,7 @@
 import 'package:desk_switch/features/home/providers/server_content_providers.dart';
-import 'package:desk_switch/features/home/providers/shared_providers.dart';
 import 'package:desk_switch/features/home/widgets/arrange_displays_dialog.dart';
-import 'package:desk_switch/models/server_info.dart';
+import 'package:desk_switch/features/shared/providers/server_providers.dart';
+import 'package:desk_switch/models/server_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
@@ -37,7 +37,6 @@ class _ServerProfile extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final isServerRunning = ref.watch(serverRunningProvider);
     final profileAsync = ref.watch(serverProfileProvider);
 
     return Card(
@@ -59,16 +58,13 @@ class _ServerProfile extends HookConsumerWidget {
                     _ServerNameField(profile: profile),
                     const Gap(16),
                     _PortConfigurationSection(
-                      isServerRunning: isServerRunning,
                       profile: profile,
                     ),
                     const Gap(16),
                     const _MonitorArrangementButton(),
                     const Gap(16),
                     const Spacer(),
-                    _StartButton(
-                      isServerRunning: isServerRunning,
-                    ),
+                    const _StartButton(),
                   ],
                 ),
                 loading: () => const Center(child: CircularProgressIndicator()),
@@ -88,15 +84,15 @@ class _ServerProfile extends HookConsumerWidget {
 }
 
 class _StartButton extends HookConsumerWidget {
-  final bool isServerRunning;
-
-  const _StartButton({
-    required this.isServerRunning,
-  });
+  const _StartButton();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final server = ref.watch(serverProvider.notifier);
+    final isServerRunning = ref.watch(
+      serverProvider.select((state) => state == ServerState.running),
+    );
+
     return FilledButton.icon(
       onPressed: isServerRunning
           ? () async => await server.stop()
@@ -115,14 +111,12 @@ class _StartButton extends HookConsumerWidget {
 
 class _ServerNameField extends HookConsumerWidget {
   const _ServerNameField({required this.profile});
-  final ServerInfo profile;
+  final ServerProfile profile;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final nameController = useTextEditingController(
-      text: profile.name,
-    );
+    final nameController = useTextEditingController(text: profile.name);
     final isEditing = useState(false);
 
     return Column(
@@ -165,7 +159,7 @@ class _ServerNameField extends HookConsumerWidget {
               IconButton(
                 icon: const Icon(Icons.close),
                 onPressed: () {
-                  nameController.text = profile.name;
+                  nameController.text = profile.name ?? '';
                   isEditing.value = false;
                 },
                 tooltip: 'Cancel',
@@ -194,19 +188,19 @@ class _ServerNameField extends HookConsumerWidget {
 }
 
 class _PortConfigurationSection extends HookConsumerWidget {
-  final bool isServerRunning;
-  final ServerInfo profile;
-
   const _PortConfigurationSection({
-    required this.isServerRunning,
     required this.profile,
   });
+  final ServerProfile profile;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isServerRunning = ref.watch(
+      serverProvider.select((state) => state == ServerState.running),
+    );
     final theme = Theme.of(context);
     final portController = useTextEditingController(
-      text: (profile.port ?? 8080).toString(),
+      text: (profile.connectionPort ?? 8080).toString(),
     );
     final isPortAuto = useState(true);
     final currentPort = useState<int?>(null);
@@ -354,7 +348,9 @@ class _ClientList extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final isServerRunning = ref.watch(serverRunningProvider);
+    final isServerRunning = ref.watch(
+      serverProvider.select((state) => state == ServerState.running),
+    );
     final clientsAsync = ref.watch(clientsProvider);
 
     return Card(
