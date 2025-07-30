@@ -5,23 +5,18 @@ import 'package:desk_switch/core/utils/logger.dart';
 import 'package:desk_switch/models/server_data.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:synchronized/synchronized.dart';
 
 part 'broadcast_service.freezed.dart';
 part 'broadcast_service.g.dart';
 
-enum BroadcastStateType {
-  initial,
-  starting,
-  running,
-  stopping,
-}
-
 @freezed
 abstract class BroadcastState with _$BroadcastState {
   const factory BroadcastState({
-    @Default(BroadcastStateType.initial) BroadcastStateType type,
     BroadcastConfig? config,
   }) = _BroadcastState;
+
+  const BroadcastState._();
 }
 
 @freezed
@@ -36,10 +31,11 @@ abstract class BroadcastConfig with _$BroadcastConfig {
       _$BroadcastConfigFromJson(json);
 }
 
-@Riverpod(keepAlive: true)
+@riverpod
 class BroadcastService extends _$BroadcastService {
   // Bonsoir for service advertisement
   BonsoirBroadcast? _broadcast;
+  final _lock = Lock();
 
   @override
   BroadcastState build() {
@@ -51,66 +47,55 @@ class BroadcastService extends _$BroadcastService {
     required int? port,
     required ServerData server,
   }) async {
-    if (state.type == BroadcastStateType.running ||
-        state.type == BroadcastStateType.starting) {
-      logger.info('📡 Broadcast already running');
+    return _lock.synchronized(() async {
+      try {
+        // Bonsoir advertisement
+        final service = BonsoirService(
+          name: server.name,
+          type: '_deskswitch._tcp',
+          port: port ?? await _findAvailablePort(),
+          attributes: {
+            'id': server.id,
+            'ws_host': server.host ?? '',
+            'ws_port': server.port.toString(),
+          },
+        );
+
+        _broadcast = BonsoirBroadcast(service: service);
+        await _broadcast!.ready;
+        await _broadcast!.start();
+
+        state = state.copyWith(
+          config: BroadcastConfig(
+            port: service.port,
+            server: server,
+          ),
+        );
+        logger.info('📡 Started broadcasting: ${service.name}:${service.port}');
+      } catch (error) {
+        logger.error('❌ Failed to start broadcast: $error');
+        state = const BroadcastState();
+        rethrow;
+      }
+
       return state.config;
-    }
-
-    state = state.copyWith(type: BroadcastStateType.starting);
-
-    try {
-      // Bonsoir advertisement
-      final service = BonsoirService(
-        name: server.name,
-        type: '_deskswitch._tcp',
-        port: port ?? await _findAvailablePort(),
-        attributes: {
-          'id': server.id,
-          'ws_host': server.host ?? '',
-          'ws_port': server.port.toString(),
-        },
-      );
-
-      _broadcast = BonsoirBroadcast(service: service);
-      await _broadcast!.ready;
-      await _broadcast!.start();
-
-      state = state.copyWith(
-        type: BroadcastStateType.running,
-        config: BroadcastConfig(
-          port: service.port,
-          server: server,
-        ),
-      );
-      logger.info('📡 Started broadcasting: ${service.name}:${service.port}');
-    } catch (error) {
-      logger.error('❌ Failed to start broadcast: $error');
-      state = const BroadcastState();
-      rethrow;
-    }
-
-    return state.config;
+    });
   }
 
   /// Stop Bonsoir advertisement
   Future<void> stop() async {
-    if (state.type == BroadcastStateType.initial) {
-      return;
-    }
-
-    state = state.copyWith(type: BroadcastStateType.stopping);
-
-    try {
-      await _broadcast?.stop();
-      _broadcast = null;
-      state = const BroadcastState();
-      logger.info('🛑 Stopped broadcasting');
-    } catch (error) {
-      logger.error('❌ Error stopping broadcast: $error');
-      state = const BroadcastState();
-      rethrow;
-    }
+    return _lock.synchronized(() async {
+      try {
+        await _broadcast?.stop();
+        logger.info('🛑 Stopped broadcasting');
+      } catch (error) {
+        logger.error('❌ Error stopping broadcast: $error');
+        rethrow;
+      } finally {
+        _broadcast = null;
+        state = const BroadcastState();
+      }
+    });
   }
 
   /// Find an available port by binding to port 0
