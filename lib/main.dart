@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:desk_switch/core/utils/logger.dart';
+import 'package:desk_switch/core/utils/observer.dart';
 import 'package:desk_switch/l10n/app_localizations.dart';
 import 'package:desk_switch/router/app_router.dart';
 import 'package:desk_switch/theme/app_theme.dart';
@@ -51,7 +52,12 @@ void main() async {
     return true;
   };
 
-  runApp(const ProviderScope(child: DeskSwitchApp()));
+  runApp(
+    const ProviderScope(
+      observers: [if (kDebugMode) DebugObserver()],
+      child: DeskSwitchApp(),
+    ),
+  );
 }
 
 class DeskSwitchApp extends ConsumerWidget {
