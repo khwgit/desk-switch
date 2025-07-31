@@ -39,6 +39,8 @@ class BroadcastService extends _$BroadcastService {
 
   @override
   BroadcastState build() {
+    ref.onDispose(() => _broadcast?.stop());
+
     return const BroadcastState();
   }
 
@@ -62,7 +64,7 @@ class BroadcastService extends _$BroadcastService {
         );
 
         _broadcast = BonsoirBroadcast(service: service);
-        await _broadcast!.ready;
+        await _broadcast!.initialize();
         await _broadcast!.start();
 
         state = state.copyWith(

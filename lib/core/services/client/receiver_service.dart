@@ -33,9 +33,8 @@ class ReceiverService extends _$ReceiverService {
 
   @override
   ReceiverState build() {
-    ref.onDispose(() async {
-      await disconnect();
-    });
+    ref.onDispose(() => _subscription?.cancel());
+    ref.onDispose(() => _socket?.close(WebSocketStatus.goingAway));
 
     return const ReceiverState();
   }
@@ -103,14 +102,12 @@ class ReceiverService extends _$ReceiverService {
   Future<void> disconnect() async {
     await _lock.synchronized(() async {
       if (state.server == null) return;
-      logger.info('🔌 Disconnecting from server: ${state.server?.name}');
-      state = state.copyWith(
-        server: state.server?.copyWith(status: ServerStatus.disconnecting),
-      );
+      state = state.copyWith.server!(status: ServerStatus.disconnecting);
       await _subscription?.cancel();
       _subscription = null;
       await _socket?.close(WebSocketStatus.goingAway);
       _socket = null;
+      logger.info('🔌 Disconnected from server: ${state.server?.name}');
       state = const ReceiverState();
     });
   }

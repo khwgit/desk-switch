@@ -27,9 +27,8 @@ class DiscoveryService extends _$DiscoveryService {
 
   @override
   DiscoveryState build() {
-    ref.onDispose(() async {
-      await stop();
-    });
+    ref.onDispose(() => _discoverySubscription?.cancel());
+    ref.onDispose(() => _discovery?.stop());
 
     return const DiscoveryState();
   }
@@ -37,81 +36,78 @@ class DiscoveryService extends _$DiscoveryService {
   /// Start discovery
   Future<void> start() async {
     await _lock.synchronized(() async {
+      if (_discovery?.isReady ?? false) return;
       logger.info('🚀 Starting discovery');
       _discovery = BonsoirDiscovery(type: '_deskswitch._tcp');
-      await _discovery!.ready;
+      await _discovery!.initialize();
       _discoverySubscription = _discovery!.eventStream?.listen((event) {
-        final service = event.service;
-        final id = service?.attributes['id'] ?? service?.name ?? '';
-        switch (event.type) {
-          case BonsoirDiscoveryEventType.discoveryServiceFound:
-            if (service != null) {
-              logger.info(
-                '📡 Found server: ${service.name}[${service.attributes['id']}]',
-              );
-              // Use id if available, otherwise fallback to name
-              final server = ServerData(id: id, name: service.name);
-              state = state.copyWith(servers: {...state.servers, id: server});
-              // _serversController.add(updatedServers.values.toList());
-              // TODO: only resolve when connected?
-              service.resolve(_discovery!.serviceResolver);
-            }
+        switch (event) {
+          case BonsoirDiscoveryServiceFoundEvent(:final service):
+            logger.info(
+              '📡 Found server: ${service.name}[${service.attributes['id']}]',
+            );
+            final id = service.id;
+            final server = ServerData(id: id, name: service.name);
+            state = state.copyWith(servers: {...state.servers, id: server});
+            // TODO: only resolve when connected?
+            service.resolve(_discovery!.serviceResolver);
             break;
-          case BonsoirDiscoveryEventType.discoveryServiceLost:
-            if (service != null) {
-              logger.info('❌ Lost server: ${service.name}');
-              state = state.copyWith(servers: {...state.servers}..remove(id));
-            }
+          case BonsoirDiscoveryServiceLostEvent(:final service):
+            logger.info('❌ Lost server: ${service.name}');
+            state = state.copyWith(
+              servers: {...state.servers}..remove(service.id),
+            );
             break;
-          case BonsoirDiscoveryEventType.discoveryServiceResolved:
-            if (service is ResolvedBonsoirService) {
-              logger.info(
-                '🔍 Service resolved: ${service.name}[${service.attributes['id']}] (${service.host}:${service.port})',
-              );
-              // Use id if available, otherwise fallback to name
-              final id = service.attributes['id'] ?? service.name;
-              final server = ServerData(
-                id: id,
-                name: service.name,
-                host: service.host,
-                port: int.tryParse(service.attributes['ws_port'] ?? '0'),
-              );
-              state = state.copyWith(servers: {...state.servers, id: server});
-            }
+          case BonsoirDiscoveryServiceResolvedEvent(:final service):
+            logger.info(
+              '🔍 Service resolved: ${service.name}[${service.id}] (${service.host}:${service.port})',
+            );
+            final server = ServerData(
+              id: service.id,
+              name: service.name,
+              host: service.host,
+              port: int.tryParse(service.attributes['ws_port'] ?? '0'),
+            );
+            state = state.copyWith(
+              servers: {...state.servers, server.id: server},
+            );
             break;
-          case BonsoirDiscoveryEventType.discoveryStarted:
+          case BonsoirDiscoveryServiceUpdatedEvent(:final service):
+            logger.info('🔍 Service updated: ${service.name}');
+            break;
+          case BonsoirDiscoveryStartedEvent():
             logger.info('🚀 Discovery started');
             break;
-          case BonsoirDiscoveryEventType.discoveryStopped:
+          case BonsoirDiscoveryStoppedEvent():
             logger.info('🛑 Discovery stopped');
             break;
-          case BonsoirDiscoveryEventType.discoveryServiceResolveFailed:
-            logger.info(
-              '❌ Service resolve failed: ${service?.name ?? 'unknown'}',
-            );
+          case BonsoirDiscoveryServiceResolveFailedEvent():
+            logger.info('❌ Service resolve failed');
             break;
-          case BonsoirDiscoveryEventType.unknown:
-            logger.info(
-              '❓ Unknown discovery event for service: ${service?.name ?? 'unknown'}',
-            );
+          case BonsoirDiscoveryUnknownEvent():
+            logger.info('❓ Unknown discovery event');
             break;
         }
       });
 
       await _discovery!.start();
-      state = state.copyWith(servers: state.servers);
     });
   }
 
   /// Stop discovery
   Future<void> stop() async {
     await _lock.synchronized(() async {
-      logger.info('🛑 Stopping discovery');
+      if (_discovery?.isStopped ?? false) return;
       await _discoverySubscription?.cancel();
       _discoverySubscription = null;
       await _discovery?.stop();
       _discovery = null;
+      logger.info('🛑 Discovery stopped');
       state = const DiscoveryState();
     });
   }
+}
+
+extension on BonsoirService {
+  String get id => attributes['id'] ?? name;
 }

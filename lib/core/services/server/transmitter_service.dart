@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:desk_switch/core/services/system_service.dart';
 import 'package:desk_switch/core/utils/logger.dart';
 import 'package:desk_switch/models/client_data.dart';
 import 'package:desk_switch/models/message.dart';
@@ -29,24 +28,20 @@ sealed class TransmitterState with _$TransmitterState {
 @riverpod
 class TransmitterService extends _$TransmitterService {
   HttpServer? _server;
-  final _clientsController = StreamController<List<ClientData>>.broadcast();
   final _lock = Lock();
 
   @override
   TransmitterState build() {
-    ref.onDispose(() {
-      _clientsController.close();
-    });
+    ref.onDispose(() => _server?.close(force: true));
 
     return const TransmitterState();
   }
 
-  Stream<List<ClientData>> clients() => _clientsController.stream;
-
   /// Start WebSocket server
   Future<ServerData?> start({
+    required String id,
+    required String name,
     required int? port,
-    required String? name,
   }) async {
     return _lock.synchronized(() async {
       try {
@@ -86,28 +81,23 @@ class TransmitterService extends _$TransmitterService {
                 }
               },
               onDone: () {
-                final updatedClients = Map<String, ClientData>.from(
-                  state.clients,
+                logger.info('🔌 Client disconnected: ${client.name}');
+                state = state.copyWith(
+                  clients: {...state.clients}..remove(client.id),
                 );
-                updatedClients.remove(client.id);
-                state = state.copyWith(clients: updatedClients);
-                _clientsController.add(updatedClients.values.toList());
               },
               onError: (error) {
                 logger.error('❌ WebSocket error from ${client.name}: $error');
-                final updatedClients = Map<String, ClientData>.from(
-                  state.clients,
+                state = state.copyWith(
+                  clients: {...state.clients}..remove(client.id),
                 );
-                updatedClients.remove(client.id);
-                state = state.copyWith(clients: updatedClients);
-                _clientsController.add(updatedClients.values.toList());
               },
               cancelOnError: true,
             );
 
-            final updatedClients = {...state.clients, client.id: client};
-            state = state.copyWith(clients: updatedClients);
-            _clientsController.add(updatedClients.values.toList());
+            state = state.copyWith(
+              clients: {...state.clients, client.id: client},
+            );
             logger.info(
               '🔌 Client connected: ${client.name} ( [32m${state.clients.length} [0m total)',
             );
@@ -118,11 +108,9 @@ class TransmitterService extends _$TransmitterService {
           }
         });
 
-        // Get machine ID from system service
-        final systemService = ref.read(systemServiceProvider.notifier);
         final server = ServerData(
-          id: await systemService.getMachineId(),
-          name: name ?? await systemService.getMachineName(),
+          id: id,
+          name: name,
           port: _server!.port,
           host: _server!.address.address,
         );
@@ -133,11 +121,9 @@ class TransmitterService extends _$TransmitterService {
       } catch (error) {
         logger.error('❌ Failed to start server: $error');
         state = const TransmitterState();
-        _clientsController.addError(error);
         rethrow;
       }
 
-      _clientsController.add(state.clients.values.toList());
       return state.server;
     });
   }

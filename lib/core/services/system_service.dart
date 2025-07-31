@@ -6,30 +6,12 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'system_service.g.dart';
 
-enum SystemServiceState {
-  initializing,
-  ready,
-}
-
-/// System service for getting machine-specific information
-///
-/// Usage:
-/// ```dart
-/// // In a widget
-/// final machineId = ref.watch(systemServiceProvider);
-///
-/// // Or call the method directly
-/// final systemService = ref.read(systemServiceProvider.notifier);
-/// final id = await systemService.getMachineId();
-/// ```
-@Riverpod(keepAlive: true)
+@riverpod
 class SystemService extends _$SystemService {
   String? _cachedMachineId;
 
   @override
-  SystemServiceState build() {
-    return SystemServiceState.ready;
-  }
+  void build() {}
 
   /// Get a unique machine identifier
   Future<String> getMachineId() async {

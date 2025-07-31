@@ -74,10 +74,8 @@ class CaptureService extends _$CaptureService {
 
   @override
   CaptureState build() {
-    ref.onDispose(() {
-      _monitorsSub?.cancel();
-      _inputSub?.cancel();
-    });
+    ref.onDispose(() => _monitorsSub?.cancel());
+    ref.onDispose(() => _inputSub?.cancel());
 
     // return ControlState();
     return _dummyState;
