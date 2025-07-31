@@ -9,7 +9,7 @@ targets:
           include_if_null: false
         generate_for:
           include:
-            - "lib/models/**.dart"
+            - "**/models/**.dart"
       freezed:
         enabled: true
         options:
@@ -19,4 +19,4 @@ targets:
           map: false
         generate_for:
           include:
-            - "lib/models/**.dart"
+            - "**/models/**.dart"
