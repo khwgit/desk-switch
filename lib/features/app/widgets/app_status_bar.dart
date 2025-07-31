@@ -1,4 +1,4 @@
-import 'package:desk_switch/features/app/providers/app_status_bar_providers.dart';
+import 'package:desk_switch/features/shared/providers/kvm_switch.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -8,7 +8,9 @@ class AppStatusBar extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final appStatus = ref.watch(appStatusProvider);
+    final kvmStatus = ref.watch(
+      kvmSwitchProvider.select((state) => state.status),
+    );
     final theme = Theme.of(context);
 
     // Determine status
@@ -16,36 +18,42 @@ class AppStatusBar extends HookConsumerWidget {
     Color statusColor;
     IconData statusIcon;
 
-    if (appStatus.isServerMode) {
-      if (appStatus.isServerRunning) {
+    switch (kvmStatus) {
+      case KvmSwitchStatus.serving:
         statusText = 'Server Running';
         statusColor = Colors.blue;
         statusIcon = Icons.play_circle_fill;
-      } else if (appStatus.isServerStarting) {
+        break;
+      case KvmSwitchStatus.booting:
         statusText = 'Starting Server...';
         statusColor = Colors.orange;
         statusIcon = Icons.sync;
-      } else {
-        statusText = 'Server Stopped';
-        statusColor = Colors.grey;
-        statusIcon = Icons.pause_circle_filled;
-      }
-    } else {
-      // Client mode
-      if (appStatus.isConnected) {
-        statusText =
-            'Connected to ${appStatus.connectedServerName ?? "Unknown Server"}';
+        break;
+      case KvmSwitchStatus.stopping:
+        statusText = 'Stopping Server...';
+        statusColor = Colors.red;
+        statusIcon = Icons.sync;
+        break;
+      case KvmSwitchStatus.connected:
+        statusText = 'Connected to Server';
         statusColor = Colors.green;
         statusIcon = Icons.check_circle;
-      } else if (appStatus.isConnecting) {
-        statusText = 'Connecting...';
+        break;
+      case KvmSwitchStatus.connecting:
+        statusText = 'Connecting to Server...';
         statusColor = Colors.orange;
         statusIcon = Icons.sync;
-      } else {
-        statusText = 'Not Connected';
+        break;
+      case KvmSwitchStatus.disconnecting:
+        statusText = 'Disconnecting from Server...';
+        statusColor = Colors.red;
+        statusIcon = Icons.sync;
+        break;
+      case KvmSwitchStatus.idle:
+        statusText = 'Ready';
         statusColor = Colors.grey;
         statusIcon = Icons.pause_circle_filled;
-      }
+        break;
     }
 
     return Container(
@@ -74,29 +82,30 @@ class AppStatusBar extends HookConsumerWidget {
           ),
           const Spacer(),
           // Mode indicator
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: appStatus.isServerMode
-                  ? Colors.blue.withOpacity(0.1)
-                  : Colors.green.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: appStatus.isServerMode
-                    ? Colors.blue.withOpacity(0.3)
-                    : Colors.green.withOpacity(0.3),
-                width: 1,
+          if (kvmStatus != KvmSwitchStatus.idle)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: kvmStatus.isServerMode
+                    ? Colors.blue.withOpacity(0.1)
+                    : Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: kvmStatus.isServerMode
+                      ? Colors.blue.withOpacity(0.3)
+                      : Colors.green.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                kvmStatus.isServerMode ? 'SERVER' : 'CLIENT',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: kvmStatus.isServerMode ? Colors.blue : Colors.green,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 10,
+                ),
               ),
             ),
-            child: Text(
-              appStatus.isServerMode ? 'SERVER' : 'CLIENT',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: appStatus.isServerMode ? Colors.blue : Colors.green,
-                fontWeight: FontWeight.w600,
-                fontSize: 10,
-              ),
-            ),
-          ),
           const Gap(12),
         ],
       ),

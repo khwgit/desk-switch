@@ -1,10 +1,9 @@
+import 'package:desk_switch/core/utils/logger.dart';
 import 'package:desk_switch/features/home/providers/client_content_providers.dart';
 import 'package:desk_switch/features/home/widgets/server_card.dart';
-import 'package:desk_switch/features/shared/providers/client_providers.dart';
-import 'package:desk_switch/features/shared/providers/server_providers.dart';
+import 'package:desk_switch/features/shared/providers/kvm_switch.dart';
 import 'package:desk_switch/models/server_data.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -44,17 +43,10 @@ class _ServerList extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final serversStream = ref.watch(serversProvider);
+    final serversAsync = ref.watch(serversProvider);
     final pinnedNotifier = ref.watch(pinnedServersProvider.notifier);
     final onServerSelected = ref.watch(selectedServerProvider.notifier).select;
     final selectedServer = ref.watch(selectedServerProvider);
-    final client = ref.watch(clientProvider.notifier);
-
-    useMemoized(
-      () => WidgetsBinding.instance.addPostFrameCallback(
-        (_) => client.start(),
-      ),
-    );
 
     return Card(
       child: Column(
@@ -72,7 +64,7 @@ class _ServerList extends HookConsumerWidget {
               const Spacer(),
               IconButton(
                 icon: const Icon(Icons.refresh),
-                onPressed: () => client.refresh(),
+                onPressed: () => ref.invalidate(serversProvider),
                 tooltip: 'Refresh',
               ),
               IconButton(
@@ -89,8 +81,9 @@ class _ServerList extends HookConsumerWidget {
           const Gap(4),
           // Available Servers List
           Expanded(
-            child: serversStream.when(
+            child: serversAsync.when(
               skipLoadingOnRefresh: false,
+              skipLoadingOnReload: true,
               data: (servers) {
                 if (servers.isEmpty) {
                   return Center(
@@ -156,42 +149,49 @@ class _ServerList extends HookConsumerWidget {
               loading: () => const Center(
                 child: CircularProgressIndicator(),
               ),
-              error: (error, stack) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 48,
-                        color: theme.colorScheme.error,
-                      ),
-                      const Gap(16),
-                      Text(
-                        'Server discovery failed',
-                        style: theme.textTheme.titleMedium?.copyWith(
+              error: (error, stack) {
+                logger.error(
+                  'Server discovery failed',
+                  error: error,
+                  stackTrace: stack,
+                );
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 48,
                           color: theme.colorScheme.error,
                         ),
-                      ),
-                      const Gap(8),
-                      Text(
-                        'Unable to discover servers on the network',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withAlpha(150),
+                        const Gap(16),
+                        Text(
+                          'Server discovery failed',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const Gap(16),
-                      FilledButton.icon(
-                        onPressed: () => client.refresh(),
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Retry'),
-                      ),
-                    ],
+                        const Gap(8),
+                        Text(
+                          'Unable to discover servers on the network',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withAlpha(150),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const Gap(16),
+                        FilledButton.icon(
+                          onPressed: () => ref.invalidate(serversProvider),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -449,9 +449,7 @@ class _ConnectionStatus extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final connectedServer = ref.watch(connectedServerProvider);
-    final clientState = ref.watch(clientProvider);
-
-    final isConnected = clientState == ClientState.connected;
+    final isConnected = connectedServer != null;
 
     return Card(
       child: Padding(
@@ -482,7 +480,7 @@ class _ConnectionStatus extends HookConsumerWidget {
                           const Gap(8),
                           Text(
                             isConnected
-                                ? 'Connected to ${connectedServer?.name ?? "Unknown Server"}'
+                                ? 'Connected to ${connectedServer.name}'
                                 : 'Not connected',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.onSurface.withAlpha(150),
@@ -511,15 +509,11 @@ class _ConnectionButton extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedServer = ref.watch(selectedServerProvider);
     final connectedServer = ref.watch(connectedServerProvider);
-    final server = ref.watch(serverProvider.notifier);
-    final client = ref.watch(clientProvider.notifier);
-
-    final clientState = ref.watch(clientProvider);
-    final isServerRunning = ref.watch(
-      serverProvider.select(
-        (state) => state != ServerState.stopped,
-      ),
+    final kvmSwitch = ref.watch(kvmSwitchProvider.notifier);
+    final kvmStatus = ref.watch(
+      kvmSwitchProvider.select((state) => state.status),
     );
+
     const loadingIcon = SizedBox.square(
       dimension: 12,
       child: CircularProgressIndicator(strokeWidth: 2),
@@ -530,18 +524,18 @@ class _ConnectionButton extends HookConsumerWidget {
     Widget buttonIcon;
     VoidCallback? buttonAction;
 
-    switch (clientState) {
-      case ClientState.connecting:
+    switch (kvmStatus) {
+      case KvmSwitchStatus.connecting:
         buttonText = 'Connecting...';
         buttonIcon = loadingIcon;
         buttonAction = null;
         break;
-      case ClientState.connected:
+      case KvmSwitchStatus.connected:
         if (selectedServer == null ||
             selectedServer.id == connectedServer?.id) {
           buttonText = 'Disconnect';
           buttonIcon = const Icon(Icons.stop);
-          buttonAction = () => client.disconnect();
+          buttonAction = () => kvmSwitch.disconnect();
         } else {
           buttonText = 'Connect';
           buttonIcon = const Icon(Icons.play_arrow);
@@ -554,32 +548,34 @@ class _ConnectionButton extends HookConsumerWidget {
                     selectedServer.name,
                   );
                   if (!shouldSwitch) return;
-                  await client.disconnect();
-                  await client.connect(selectedServer);
+                  await kvmSwitch.disconnect();
+                  await kvmSwitch.connect(selectedServer);
                 }
               : null;
         }
         break;
-      case ClientState.disconnecting:
+      case KvmSwitchStatus.disconnecting:
         buttonText = 'Disconnecting...';
         buttonIcon = loadingIcon;
         buttonAction = null;
         break;
-      case ClientState.disconnected:
+      case KvmSwitchStatus.idle:
+      case KvmSwitchStatus.booting:
+      case KvmSwitchStatus.serving:
+      case KvmSwitchStatus.stopping:
         buttonText = 'Connect';
         buttonIcon = const Icon(Icons.play_arrow);
-        buttonAction =
-            selectedServer != null &&
-                selectedServer.status == ServerStatus.online
+        buttonAction = selectedServer != null
             ? () async {
-                if (isServerRunning) {
+                if (kvmStatus.isServerMode) {
                   final shouldStopServer = await _showStopServerDialog(context);
                   if (!shouldStopServer) return;
 
                   // Stop the server
-                  await server.stop();
+                  await kvmSwitch.stop();
                 }
-                await client.connect(selectedServer);
+
+                await kvmSwitch.connect(selectedServer);
               }
             : null;
         break;

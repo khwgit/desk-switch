@@ -4,7 +4,6 @@ import 'package:collection/collection.dart';
 import 'package:desk_switch/core/services/client/discovery_service.dart';
 import 'package:desk_switch/core/services/client/receiver_service.dart';
 import 'package:desk_switch/core/services/server/broadcast_service.dart';
-import 'package:desk_switch/features/shared/providers/client_providers.dart';
 import 'package:desk_switch/models/server_data.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -13,38 +12,39 @@ part 'client_content_providers.g.dart';
 
 // Provider for the list of online servers (future: combine with pins)
 @riverpod
-Stream<List<ServerData>> servers(Ref ref) async* {
-  final localServerId = ref.watch(
+Future<List<ServerData>> servers(Ref ref) async {
+  await ref.watch(_initDiscoveryProvider.future);
+  final localId = ref.watch(
     broadcastServiceProvider.select(
       (state) => state.config?.server.id,
     ),
   );
-  final connectedServer = ref.watch(
-    receiverServiceProvider.select(
-      (state) => state.server,
+  final connected = ref.watch(connectedServerProvider);
+  final servers = ref.watch(
+    discoveryServiceProvider.select(
+      (state) => state.servers.values,
     ),
   );
 
-  await ref.read(clientProvider.notifier).start();
-  ref.onDispose(() async {
-    await ref.read(clientProvider.notifier).stop();
-  });
+  return servers.expand<ServerData>(
+    (data) {
+      if (data.id == localId) {
+        return []; // Don't show local server in the list
+      }
+      if (data.id == connected?.id) {
+        return [data.copyWith(status: connected?.status)];
+      }
 
-  List<ServerData> expander(ServerData data) {
-    if (data.id == localServerId) {
-      return []; // Don't show local server in the list
-    }
-    if (data.id == connectedServer?.id) {
-      return [data.copyWith(status: connectedServer?.status)];
-    }
+      return [data.copyWith(status: ServerStatus.online)];
+    },
+  ).toList();
+}
 
-    return [data.copyWith(status: ServerStatus.online)];
-  }
-
-  yield* ref
-      .watch(discoveryServiceProvider.notifier)
-      .servers()
-      .map((servers) => servers.expand(expander).toList());
+@riverpod
+Future<void> _initDiscovery(Ref ref) async {
+  final discoveryService = ref.watch(discoveryServiceProvider.notifier);
+  await discoveryService.start();
+  ref.keepAlive();
 }
 
 @riverpod

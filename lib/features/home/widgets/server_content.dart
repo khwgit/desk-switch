@@ -1,6 +1,6 @@
 import 'package:desk_switch/features/home/providers/server_content_providers.dart';
 import 'package:desk_switch/features/home/widgets/arrange_displays_dialog.dart';
-import 'package:desk_switch/features/shared/providers/server_providers.dart';
+import 'package:desk_switch/features/shared/providers/kvm_switch.dart';
 import 'package:desk_switch/models/server_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -64,7 +64,7 @@ class _ServerProfile extends HookConsumerWidget {
                     const _MonitorArrangementButton(),
                     const Gap(16),
                     const Spacer(),
-                    const _StartButton(),
+                    _StartButton(profile: profile),
                   ],
                 ),
                 loading: () => const Center(child: CircularProgressIndicator()),
@@ -84,21 +84,24 @@ class _ServerProfile extends HookConsumerWidget {
 }
 
 class _StartButton extends HookConsumerWidget {
-  const _StartButton();
+  const _StartButton({required this.profile});
+  final ServerProfile profile;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final server = ref.watch(serverProvider.notifier);
-    final isServerRunning = ref.watch(
-      serverProvider.select((state) => state == ServerState.running),
+    final kvmSwitch = ref.watch(kvmSwitchProvider.notifier);
+    final kvmStatus = ref.watch(
+      kvmSwitchProvider.select((state) => state.status),
     );
 
     return FilledButton.icon(
-      onPressed: isServerRunning
-          ? () async => await server.stop()
-          : () async => await server.start(),
-      icon: Icon(isServerRunning ? Icons.stop : Icons.play_arrow),
-      label: Text(isServerRunning ? 'Stop' : 'Start Server'),
+      // TODO: handle the case where kvm switch is in client mode
+      // It should show a dialog to disconnect the client
+      onPressed: kvmStatus.isServerMode
+          ? () async => await kvmSwitch.stop()
+          : () async => await kvmSwitch.serve(profile),
+      icon: Icon(kvmStatus.isServerMode ? Icons.stop : Icons.play_arrow),
+      label: Text(kvmStatus.isServerMode ? 'Stop' : 'Start Server'),
       style: FilledButton.styleFrom(
         padding: const EdgeInsets.symmetric(
           horizontal: 32,
@@ -195,8 +198,8 @@ class _PortConfigurationSection extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isServerRunning = ref.watch(
-      serverProvider.select((state) => state == ServerState.running),
+    final kvmStatus = ref.watch(
+      kvmSwitchProvider.select((state) => state.status),
     );
     final theme = Theme.of(context);
     final portController = useTextEditingController(
@@ -260,7 +263,7 @@ class _PortConfigurationSection extends HookConsumerWidget {
                 const Gap(8),
                 Expanded(
                   child: Text(
-                    isServerRunning
+                    kvmStatus.isServerMode
                         ? 'Port: \\${currentPort.value ?? 'Detecting...'}'
                         : 'Port will be automatically assigned when server starts',
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -348,8 +351,8 @@ class _ClientList extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final isServerRunning = ref.watch(
-      serverProvider.select((state) => state == ServerState.running),
+    final kvmStatus = ref.watch(
+      kvmSwitchProvider.select((state) => state.status),
     );
     final clientsAsync = ref.watch(clientsProvider);
 
@@ -383,7 +386,7 @@ class _ClientList extends HookConsumerWidget {
           const Gap(4),
           // Main content
           Expanded(
-            child: isServerRunning
+            child: kvmStatus.isServerMode
                 ? clientsAsync.when(
                     data: (clients) => clients.isEmpty
                         ? Center(

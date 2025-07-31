@@ -2,25 +2,28 @@ import 'package:desk_switch/core/services/server/transmitter_service.dart';
 import 'package:desk_switch/core/services/system_service.dart';
 import 'package:desk_switch/models/client_data.dart';
 import 'package:desk_switch/models/server_profile.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'server_content_providers.g.dart';
 
 // Provider for clients
 @riverpod
-Stream<List<ClientData>> clients(Ref ref) {
-  return ref.watch(transmitterServiceProvider.notifier).clients();
+Future<List<ClientData>> clients(Ref ref) async {
+  return ref.watch(
+    transmitterServiceProvider.select(
+      (state) => state.clients.values.toList(),
+    ),
+  );
 }
 
 @riverpod
 Future<ServerProfile> serverProfile(Ref ref) async {
   final systemService = ref.watch(systemServiceProvider.notifier);
-  final machineId = await systemService.getMachineId();
   final machineName = await systemService.getMachineName();
-  return const ServerProfile(
-    // id: ref.watch(systemServiceProvider.notifier).getMachineId(),
-    // name: ref.watch(systemServiceProvider.notifier).getMachineName(),
-    // port: 8080,
+  return ServerProfile(
+    name: machineName,
+    connectionPort: 8088,
   );
 }
 
