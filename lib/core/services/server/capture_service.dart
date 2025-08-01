@@ -65,7 +65,7 @@ abstract class CaptureState with _$CaptureState {
   }
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class CaptureService extends _$CaptureService {
   static const _kvm = KvmHelper.instance;
 

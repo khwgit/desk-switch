@@ -3,7 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'permission_service.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 class PermissionService extends _$PermissionService {
   final _kvm = KvmHelper.instance;
 

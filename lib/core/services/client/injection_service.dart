@@ -3,7 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'injection_service.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 class InjectionService extends _$InjectionService {
   final KvmHelper _kvm = KvmHelper.instance;
 

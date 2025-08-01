@@ -31,7 +31,7 @@ abstract class BroadcastConfig with _$BroadcastConfig {
       _$BroadcastConfigFromJson(json);
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class BroadcastService extends _$BroadcastService {
   // Bonsoir for service advertisement
   BonsoirBroadcast? _broadcast;

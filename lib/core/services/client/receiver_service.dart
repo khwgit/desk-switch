@@ -24,7 +24,7 @@ abstract class ReceiverState with _$ReceiverState {
   bool get isConnected => server?.status == ServerStatus.connected;
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class ReceiverService extends _$ReceiverService {
   // WebSocket connection
   WebSocket? _socket;

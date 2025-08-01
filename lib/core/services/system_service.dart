@@ -6,7 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'system_service.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 class SystemService extends _$SystemService {
   String? _cachedMachineId;
 

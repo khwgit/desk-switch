@@ -19,7 +19,7 @@ abstract class DiscoveryState with _$DiscoveryState {
   const DiscoveryState._();
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class DiscoveryService extends _$DiscoveryService {
   BonsoirDiscovery? _discovery;
   StreamSubscription? _discoverySubscription;

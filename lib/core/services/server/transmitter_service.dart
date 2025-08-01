@@ -25,7 +25,7 @@ sealed class TransmitterState with _$TransmitterState {
   const TransmitterState._();
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class TransmitterService extends _$TransmitterService {
   HttpServer? _server;
   final _lock = Lock();
