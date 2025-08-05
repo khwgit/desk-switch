@@ -40,6 +40,7 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
           instance?.allowedInputTypes = Set(InputType.allCases)
         }
         instance?.startEventTap()
+        instance?.emitCursorPosition()
         return nil
       },
       onCancel: { [weak instance] arguments in
@@ -448,6 +449,21 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
         originalCursor.set()
         self.originalCursor = nil
       }
+    }
+  }
+  
+  private func emitCursorPosition() {
+    if let event = CGEvent(source: nil) {
+      let eventData: [String: Any] = [
+        "kind": "mouse",
+        "type": "mouseMoved",
+        "x": event.location.x,
+        "y": event.location.y,
+      ]
+
+      inputSink?(eventData)
+    } else {
+      print("Failed to get mouse event.")
     }
   }
 
