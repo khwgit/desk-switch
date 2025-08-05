@@ -20,6 +20,7 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
   private var monitorNotificationPort: IONotificationPortRef?
   private var monitorIterator: io_iterator_t = 0
   private var screenParametersObserver: NSObjectProtocol?
+  private var customEventSource: CGEventSource? = CGEventSource(stateID: .hidSystemState)
 
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "kvm_helper", binaryMessenger: registrar.messenger)
@@ -222,6 +223,7 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
       "type": eventType,
       "modifiers": modifiers,
       "character": NSNull(),
+      "flag": event.getIntegerValueField(.eventSourceUserData),
     ]
     
     inputSink?(eventData)
@@ -284,6 +286,7 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
       "deltaX": deltaX,
       "deltaY": deltaY,
       "deltaZ": deltaZ,
+      "flag": event.getIntegerValueField(.eventSourceUserData),
     ]
     
     inputSink?(eventData)
@@ -316,10 +319,9 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
       return
     }
     
-    let event = CGEvent(mouseEventSource: nil, mouseType: eventType, mouseCursorPosition: CGPoint(x: x, y: y), mouseButton: .left)
-    if let mouseEvent = event {
-      mouseEvent.post(tap: .cghidEventTap)
-    }
+    let event = CGEvent(mouseEventSource: customEventSource, mouseType: eventType, mouseCursorPosition: CGPoint(x: x, y: y), mouseButton: .left)
+    event?.setIntegerValueField(.eventSourceUserData, value: args["flag"] as! Int64)
+    event?.post(tap: .cghidEventTap)
     
     result(nil)
   }
@@ -360,11 +362,10 @@ public class KvmHelperPlugin: NSObject, FlutterPlugin {
       }
     }
     
-    let event = CGEvent(keyboardEventSource: nil, virtualKey: CGKeyCode(keyCode), keyDown: eventType == .keyDown)
-    if let keyboardEvent = event {
-      keyboardEvent.flags = flags
-      keyboardEvent.post(tap: .cghidEventTap)
-    }
+    let event = CGEvent(keyboardEventSource: customEventSource, virtualKey: CGKeyCode(keyCode), keyDown: eventType == .keyDown)
+    event?.flags = flags
+    event?.setIntegerValueField(.eventSourceUserData, value: args["flag"] as! Int64)
+    event?.post(tap: .cghidEventTap)
     
     result(nil)
   }

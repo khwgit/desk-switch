@@ -49,6 +49,7 @@ message KeyboardInput {
   KeyboardInputType type = 2;
   repeated KeyModifier modifiers = 3;
   optional string character = 4;
+  int32 flag = 5;
 }
 
 message MouseInput {
@@ -59,6 +60,7 @@ message MouseInput {
   double deltaX = 5;
   double deltaY = 6;
   double deltaZ = 7;
+  int32 flag = 8;
 }
 
 message Input {

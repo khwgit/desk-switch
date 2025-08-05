@@ -10,6 +10,7 @@ sealed class Input with _$Input {
     required KeyboardInputType type,
     @Default([]) List<KeyModifier> modifiers,
     String? character,
+    @Default(0) int flag,
   }) = KeyboardInput;
 
   const factory Input.mouse({
@@ -20,6 +21,7 @@ sealed class Input with _$Input {
     @Default(0) double deltaX,
     @Default(0) double deltaY,
     @Default(0) double deltaZ,
+    @Default(0) int flag,
   }) = MouseInput;
 
   // const factory Input.clipboard({

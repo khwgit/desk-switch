@@ -3,29 +3,49 @@ import 'package:kvm_helper/kvm_helper.dart';
 
 export 'package:kvm_helper/models/input.dart';
 
+enum InputFlag {
+  /// The input flag is not set.
+  none,
+
+  /// The input is to sync the global position with the actual position.
+  ///
+  /// It will be used when switching to the local desktop.
+  sync,
+
+  /// The input is to recenter the cursor and will be ignored when calculating
+  /// the global position.
+  recenter,
+}
+
 // Conversion between Dart model and protobuf
 extension InputToProto on Input {
   pb.Input toProto() {
     switch (this) {
       case KeyboardInput input:
-        return pb.Input()
-          ..kind = pb.InputType.KEYBOARD
-          ..keyboard = (pb.KeyboardInput()
-            ..code = input.code
-            ..type = input.type.toProto()
-            ..modifiers.addAll(input.modifiers.map((m) => m.toProto()))
-            ..character = input.character ?? '');
+        return pb.Input(
+          kind: pb.InputType.KEYBOARD,
+          keyboard: pb.KeyboardInput(
+            code: input.code,
+            type: input.type.toProto(),
+            modifiers: input.modifiers.map((m) => m.toProto()).toList(),
+            character: input.character ?? '',
+            flag: input.flag,
+          ),
+        );
       case MouseInput input:
-        return pb.Input()
-          ..kind = pb.InputType.MOUSE
-          ..mouse = (pb.MouseInput()
-            ..x = input.x
-            ..y = input.y
-            ..type = input.type.toProto()
-            ..button = (input.button?.toProto() ?? pb.MouseButton.LEFT)
-            ..deltaX = input.deltaX
-            ..deltaY = input.deltaY
-            ..deltaZ = input.deltaZ);
+        return pb.Input(
+          kind: pb.InputType.MOUSE,
+          mouse: pb.MouseInput(
+            x: input.x,
+            y: input.y,
+            type: input.type.toProto(),
+            button: input.button?.toProto() ?? pb.MouseButton.LEFT,
+            deltaX: input.deltaX,
+            deltaY: input.deltaY,
+            deltaZ: input.deltaZ,
+            flag: input.flag,
+          ),
+        );
     }
   }
 }

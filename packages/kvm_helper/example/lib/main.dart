@@ -165,12 +165,14 @@ class _MyAppState extends State<MyApp> {
 
       _inputSubscription = _kvmHelperPlugin.inputs(types).listen((event) {
         if (event is KeyboardInput) {
+          final flagInfo = event.flag != 0 ? ' - Flag: ${event.flag}' : '';
           _addInputEvent(
-            'Keyboard: ${event.type} - Key: ${event.code} - Modifiers: ${event.modifiers}',
+            'Keyboard: ${event.type} - Key: ${event.code} - Modifiers: ${event.modifiers}$flagInfo',
           );
         } else if (event is MouseInput) {
+          final flagInfo = event.flag != 0 ? ' - Flag: ${event.flag}' : '';
           _addInputEvent(
-            'Mouse: ${event.type} - Pos: (${event.x.toStringAsFixed(1)}, ${event.y.toStringAsFixed(1)}) - Button: ${event.button}',
+            'Mouse: ${event.type} - Pos: (${event.x.toStringAsFixed(1)}, ${event.y.toStringAsFixed(1)}) - Button: ${event.button}$flagInfo',
           );
 
           // If both monitoring and mouse capture are active, get the monitor at cursor position
@@ -234,10 +236,10 @@ class _MyAppState extends State<MyApp> {
           type: KeyboardInputType.keyDown,
           modifiers: [KeyModifier.shift],
           character: 'A',
-          // timestamp: DateTime.now().millisecondsSinceEpoch,
+          flag: 123,
         ),
       );
-      _addInputEvent('Injected keyboard event: Shift+A');
+      _addInputEvent('Injected keyboard event: Shift+A with flag');
     } catch (e) {
       _addInputEvent('Error injecting keyboard event: $e');
     }
@@ -254,15 +256,17 @@ class _MyAppState extends State<MyApp> {
         MouseInput(
           x: 100.0,
           y: 100.0,
-          type: MouseInputType.leftMouseDown,
-          button: MouseButton.left,
+          type: MouseInputType.mouseMoved,
+          // button: MouseButton.left,
           deltaX: 0.0,
           deltaY: 0.0,
           deltaZ: 0.0,
-          // timestamp: DateTime.now().millisecondsSinceEpoch,
+          flag: 456,
         ),
       );
-      _addInputEvent('Injected mouse event: Left click at (100, 100)');
+      _addInputEvent(
+        'Injected mouse event: Mouse moved at (100, 100) with flag',
+      );
     } catch (e) {
       _addInputEvent('Error injecting mouse event: $e');
     }
