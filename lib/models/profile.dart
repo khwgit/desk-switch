@@ -1,4 +1,3 @@
-import 'package:desk_switch/models/server_data.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'profile.freezed.dart';
