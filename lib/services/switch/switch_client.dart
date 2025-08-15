@@ -4,6 +4,7 @@ import 'package:desk_switch/models/profile.dart';
 import 'package:desk_switch/services/communication/receiver_service.dart';
 import 'package:desk_switch/services/control/capture_service.dart';
 import 'package:desk_switch/services/switch/client/device_updater.dart';
+import 'package:desk_switch/services/switch/client/input_updater.dart';
 import 'package:desk_switch/services/switch/switch_state.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -34,8 +35,7 @@ class SwitchClient extends _$SwitchClient {
   void update(Message message, [String deviceId = '']) {
     final next = state.copyWith(events: []);
     state = switch (message) {
-      // TODO: Key mapper / Shortcut detection
-      InputMessage _ => next,
+      InputMessage(:final input) => updateClientInput(input, next),
       DeviceMessage message => updateClientDevice(message, next),
     };
   }
