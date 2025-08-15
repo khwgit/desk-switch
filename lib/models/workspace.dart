@@ -19,14 +19,6 @@ abstract class WorkspaceLayout with _$WorkspaceLayout {
     return monitors.where((monitor) => monitor.deviceId == deviceId).toList();
   }
 
-  // WorkspaceMonitor? monitorAt(Offset position, [String? deviceId]) {
-  //   return monitors.firstWhereOrNull(
-  //     (monitor) =>
-  //         (deviceId == null || monitor.deviceId == deviceId) &&
-  //         monitor.rect.contains(position),
-  //   );
-  // }
-
   WorkspaceMonitor? monitor(String deviceId, String monitorId) {
     return monitors.firstWhereOrNull(
       (monitor) => monitor.deviceId == deviceId && monitor.data.id == monitorId,
@@ -81,7 +73,7 @@ abstract class WorkspaceCursor with _$WorkspaceCursor {
 @freezed
 abstract class WorkspaceMessage with _$WorkspaceMessage {
   const factory WorkspaceMessage({
-    required String id,
+    required String deviceId,
     required Message data,
   }) = _WorkspaceMessage;
 

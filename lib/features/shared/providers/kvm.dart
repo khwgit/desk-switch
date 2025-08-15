@@ -4,9 +4,9 @@ import 'package:desk_switch/models/server_data.dart';
 import 'package:desk_switch/services/communication/receiver_service.dart';
 import 'package:desk_switch/services/communication/transmitter_service.dart';
 import 'package:desk_switch/services/control/capture_service.dart';
+import 'package:desk_switch/services/control/injection_service.dart';
 import 'package:desk_switch/services/pair/broadcast_service.dart';
 import 'package:desk_switch/services/permission_service.dart';
-import 'package:desk_switch/services/switch/switch_state.dart';
 import 'package:desk_switch/services/switch_service.dart';
 import 'package:desk_switch/services/system_service.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -62,8 +62,9 @@ class Kvm extends _$Kvm {
   late SystemService _system;
   late BroadcastService _broadcast;
   late CaptureService _capture;
+  late InjectionService _injection;
 
-  ProviderSubscription<AsyncValue<SwitchState>>? _sub;
+  ProviderSubscription<List<SwitchEvent>>? _sub;
 
   @override
   KvmState build() {
@@ -73,6 +74,7 @@ class Kvm extends _$Kvm {
     _system = ref.watch(systemServiceProvider.notifier);
     _broadcast = ref.watch(broadcastServiceProvider.notifier);
     _capture = ref.watch(captureServiceProvider.notifier);
+    _injection = ref.watch(injectionServiceProvider.notifier);
 
     return const KvmState();
   }
@@ -82,7 +84,24 @@ class Kvm extends _$Kvm {
 
     try {
       const profile = ClientProfile(); // TODO: get profile
-      _sub = ref.listen(switchServiceProvider(profile), (prev, next) {});
+      _sub = ref.listen(
+        switchClientProvider(profile).select((state) => state.events),
+        (prev, next) async {
+          for (final event in next) {
+            switch (event) {
+              case InjectSwitchEvent(input: final input):
+                await _injection.inject(input);
+                break;
+              case SendSwitchEvent(message: final message):
+                _receiver.send(message.data);
+                break;
+              case BlockSwitchEvent():
+              case UnblockSwitchEvent():
+                break;
+            }
+          }
+        },
+      );
 
       final granted = await _permission.request(PermissionType.kvm);
       if (!granted) {
@@ -102,7 +121,27 @@ class Kvm extends _$Kvm {
 
     try {
       const profile = ServerProfile(); // TODO: get profile
-      _sub = ref.listen(switchServiceProvider(profile), (prev, next) {});
+      _sub = ref.listen(
+        switchServerProvider(profile).select((state) => state.events),
+        (prev, next) async {
+          for (final event in next) {
+            switch (event) {
+              case InjectSwitchEvent(input: final input):
+                await _injection.inject(input);
+                break;
+              case SendSwitchEvent(message: final message):
+                // _transmitter.send(message.deviceId, message.data);
+                break;
+              case BlockSwitchEvent():
+                // await _injection.block();
+                break;
+              case UnblockSwitchEvent():
+                // await _injection.unblock();
+                break;
+            }
+          }
+        },
+      );
 
       final granted = await _permission.request(PermissionType.kvm);
       if (!granted) {

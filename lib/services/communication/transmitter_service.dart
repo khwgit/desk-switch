@@ -72,7 +72,7 @@ class TransmitterService extends _$TransmitterService {
                   try {
                     state = state.copyWith(
                       message: WorkspaceMessage(
-                        id: client.id,
+                        deviceId: client.id,
                         data: pb.Message.fromBuffer(data).toModel(),
                       ),
                     );
@@ -147,9 +147,9 @@ class TransmitterService extends _$TransmitterService {
     });
   }
 
-  void send(WorkspaceMessage message) async {
-    state.clients[message.id]?.socket?.add(
-      message.data.toProto().writeToBuffer(),
+  void send(String clientId, Message message) async {
+    state.clients[clientId]?.socket?.add(
+      message.toProto().writeToBuffer(),
     );
   }
 
