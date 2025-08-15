@@ -7,6 +7,7 @@ import 'package:desk_switch/models/client_data.dart';
 import 'package:desk_switch/models/message.dart';
 import 'package:desk_switch/models/message.pb.dart' as pb;
 import 'package:desk_switch/models/server_data.dart';
+import 'package:desk_switch/models/workspace.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:synchronized/synchronized.dart';
@@ -19,7 +20,7 @@ sealed class TransmitterState with _$TransmitterState {
   const factory TransmitterState({
     @Default({}) Map<String, ClientData> clients,
     ServerData? server,
-    ClientPackage? package,
+    WorkspaceMessage? message,
   }) = _TransmitterState;
 
   const TransmitterState._();
@@ -69,11 +70,12 @@ class TransmitterService extends _$TransmitterService {
               (data) {
                 if (data is List<int>) {
                   try {
-                    final package = ClientPackage(
-                      id: client.id,
-                      message: pb.Message.fromBuffer(data).toModel(),
+                    state = state.copyWith(
+                      message: WorkspaceMessage(
+                        id: client.id,
+                        data: pb.Message.fromBuffer(data).toModel(),
+                      ),
                     );
-                    state = state.copyWith(package: package);
                   } catch (e) {
                     // Handle parse error
                     logger.error('❌ Failed to parse message: $e');
@@ -145,9 +147,9 @@ class TransmitterService extends _$TransmitterService {
     });
   }
 
-  void send(ClientPackage package) async {
-    state.clients[package.id]?.socket?.add(
-      package.message.toProto().writeToBuffer(),
+  void send(WorkspaceMessage message) async {
+    state.clients[message.id]?.socket?.add(
+      message.data.toProto().writeToBuffer(),
     );
   }
 

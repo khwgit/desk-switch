@@ -7,18 +7,6 @@ part 'message.freezed.dart';
 part 'message.g.dart';
 
 @freezed
-abstract class ClientPackage with _$ClientPackage {
-  const factory ClientPackage({
-    required String id,
-    required Message message,
-  }) = _ClientPackage;
-
-  const ClientPackage._();
-  factory ClientPackage.fromJson(Map<String, dynamic> json) =>
-      _$ClientPackageFromJson(json);
-}
-
-@freezed
 sealed class Message with _$Message {
   const factory Message.input(
     Input input,
