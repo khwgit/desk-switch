@@ -22,7 +22,7 @@ dependencies:
     sdk: flutter
 
   # State management and UI
-  hooks_riverpod: ^3.0.0-dev.16
+  hooks_riverpod: ^3.0.0-dev.17
   flutter_hooks:
   go_router: ^16.0.0
   go_router_maker: ^0.0.1
@@ -31,7 +31,7 @@ dependencies:
   # Code generation
   freezed_annotation: ^3.1.0
   json_annotation: ^4.9.0
-  riverpod_annotation: ^3.0.0-dev.16
+  riverpod_annotation: ^3.0.0-dev.17
 
   # Platform-specific functionality
   window_manager: ^0.5.0
@@ -55,18 +55,19 @@ dependencies:
   synchronized: ^3.4.0
   hive_ce: ^2.11.3
   hive_ce_flutter: ^2.3.1
+  rxdart: ^0.28.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   custom_lint:
-  riverpod_lint: ^3.0.0-dev.16
+  riverpod_lint: ^3.0.0-dev.17
   build_runner: ^2.5.4
   mockito: ^5.4.6
-  freezed: ^3.1.0
+  freezed: ^3.2.0
   json_serializable: ^6.9.5
-  riverpod_generator: ^3.0.0-dev.16
+  riverpod_generator: ^3.0.0-dev.17
   melos: ^7.0.0-dev.9
   hive_ce_generator: ^1.9.2
 
