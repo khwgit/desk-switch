@@ -1,7 +1,7 @@
-import 'package:desk_switch/core/services/server/transmitter_service.dart';
-import 'package:desk_switch/core/services/system_service.dart';
 import 'package:desk_switch/models/client_data.dart';
-import 'package:desk_switch/models/server_profile.dart';
+import 'package:desk_switch/models/profile.dart';
+import 'package:desk_switch/services/communication/transmitter_service.dart';
+import 'package:desk_switch/services/system_service.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 

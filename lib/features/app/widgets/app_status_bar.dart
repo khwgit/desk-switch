@@ -1,4 +1,4 @@
-import 'package:desk_switch/features/shared/providers/kvm_switch.dart';
+import 'package:desk_switch/features/shared/providers/kvm.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -9,7 +9,7 @@ class AppStatusBar extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final kvmStatus = ref.watch(
-      kvmSwitchProvider.select((state) => state.status),
+      kvmProvider.select((state) => state.status),
     );
     final theme = Theme.of(context);
 
@@ -19,37 +19,37 @@ class AppStatusBar extends HookConsumerWidget {
     IconData statusIcon;
 
     switch (kvmStatus) {
-      case KvmSwitchStatus.serving:
+      case KvmStatus.serving:
         statusText = 'Server Running';
         statusColor = Colors.blue;
         statusIcon = Icons.play_circle_fill;
         break;
-      case KvmSwitchStatus.booting:
+      case KvmStatus.booting:
         statusText = 'Starting Server...';
         statusColor = Colors.orange;
         statusIcon = Icons.sync;
         break;
-      case KvmSwitchStatus.stopping:
+      case KvmStatus.stopping:
         statusText = 'Stopping Server...';
         statusColor = Colors.red;
         statusIcon = Icons.sync;
         break;
-      case KvmSwitchStatus.connected:
+      case KvmStatus.connected:
         statusText = 'Connected to Server';
         statusColor = Colors.green;
         statusIcon = Icons.check_circle;
         break;
-      case KvmSwitchStatus.connecting:
+      case KvmStatus.connecting:
         statusText = 'Connecting to Server...';
         statusColor = Colors.orange;
         statusIcon = Icons.sync;
         break;
-      case KvmSwitchStatus.disconnecting:
+      case KvmStatus.disconnecting:
         statusText = 'Disconnecting from Server...';
         statusColor = Colors.red;
         statusIcon = Icons.sync;
         break;
-      case KvmSwitchStatus.idle:
+      case KvmStatus.idle:
         statusText = 'Ready';
         statusColor = Colors.grey;
         statusIcon = Icons.pause_circle_filled;
@@ -82,7 +82,7 @@ class AppStatusBar extends HookConsumerWidget {
           ),
           const Spacer(),
           // Mode indicator
-          if (kvmStatus != KvmSwitchStatus.idle)
+          if (kvmStatus != KvmStatus.idle)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(

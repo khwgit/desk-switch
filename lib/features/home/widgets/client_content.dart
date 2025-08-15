@@ -1,7 +1,7 @@
 import 'package:desk_switch/core/utils/logger.dart';
 import 'package:desk_switch/features/home/providers/client_content_providers.dart';
 import 'package:desk_switch/features/home/widgets/server_card.dart';
-import 'package:desk_switch/features/shared/providers/kvm_switch.dart';
+import 'package:desk_switch/features/shared/providers/kvm.dart';
 import 'package:desk_switch/models/server_data.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
@@ -509,9 +509,9 @@ class _ConnectionButton extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedServer = ref.watch(selectedServerProvider);
     final connectedServer = ref.watch(connectedServerProvider);
-    final kvmSwitch = ref.watch(kvmSwitchProvider.notifier);
+    final kvm = ref.watch(kvmProvider.notifier);
     final kvmStatus = ref.watch(
-      kvmSwitchProvider.select((state) => state.status),
+      kvmProvider.select((state) => state.status),
     );
 
     const loadingIcon = SizedBox.square(
@@ -525,17 +525,17 @@ class _ConnectionButton extends HookConsumerWidget {
     VoidCallback? buttonAction;
 
     switch (kvmStatus) {
-      case KvmSwitchStatus.connecting:
+      case KvmStatus.connecting:
         buttonText = 'Connecting...';
         buttonIcon = loadingIcon;
         buttonAction = null;
         break;
-      case KvmSwitchStatus.connected:
+      case KvmStatus.connected:
         if (selectedServer == null ||
             selectedServer.id == connectedServer?.id) {
           buttonText = 'Disconnect';
           buttonIcon = const Icon(Icons.stop);
-          buttonAction = () => kvmSwitch.disconnect();
+          buttonAction = () => kvm.stop();
         } else {
           buttonText = 'Connect';
           buttonIcon = const Icon(Icons.play_arrow);
@@ -548,21 +548,21 @@ class _ConnectionButton extends HookConsumerWidget {
                     selectedServer.name,
                   );
                   if (!shouldSwitch) return;
-                  await kvmSwitch.disconnect();
-                  await kvmSwitch.connect(selectedServer);
+                  await kvm.stop();
+                  await kvm.connect(selectedServer);
                 }
               : null;
         }
         break;
-      case KvmSwitchStatus.disconnecting:
+      case KvmStatus.disconnecting:
         buttonText = 'Disconnecting...';
         buttonIcon = loadingIcon;
         buttonAction = null;
         break;
-      case KvmSwitchStatus.idle:
-      case KvmSwitchStatus.booting:
-      case KvmSwitchStatus.serving:
-      case KvmSwitchStatus.stopping:
+      case KvmStatus.idle:
+      case KvmStatus.booting:
+      case KvmStatus.serving:
+      case KvmStatus.stopping:
         buttonText = 'Connect';
         buttonIcon = const Icon(Icons.play_arrow);
         buttonAction = selectedServer != null
@@ -572,10 +572,10 @@ class _ConnectionButton extends HookConsumerWidget {
                   if (!shouldStopServer) return;
 
                   // Stop the server
-                  await kvmSwitch.stop();
+                  await kvm.stop();
                 }
 
-                await kvmSwitch.connect(selectedServer);
+                await kvm.connect(selectedServer);
               }
             : null;
         break;

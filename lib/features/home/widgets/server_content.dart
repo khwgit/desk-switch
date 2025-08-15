@@ -1,7 +1,7 @@
 import 'package:desk_switch/features/home/providers/server_content_providers.dart';
 import 'package:desk_switch/features/home/widgets/arrange_displays_dialog.dart';
-import 'package:desk_switch/features/shared/providers/kvm_switch.dart';
-import 'package:desk_switch/models/server_profile.dart';
+import 'package:desk_switch/features/shared/providers/kvm.dart';
+import 'package:desk_switch/models/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
@@ -89,17 +89,17 @@ class _StartButton extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final kvmSwitch = ref.watch(kvmSwitchProvider.notifier);
+    final kvm = ref.watch(kvmProvider.notifier);
     final kvmStatus = ref.watch(
-      kvmSwitchProvider.select((state) => state.status),
+      kvmProvider.select((state) => state.status),
     );
 
     return FilledButton.icon(
       // TODO: handle the case where kvm switch is in client mode
       // It should show a dialog to disconnect the client
       onPressed: kvmStatus.isServerMode
-          ? () async => await kvmSwitch.stop()
-          : () async => await kvmSwitch.serve(profile),
+          ? () async => await kvm.stop()
+          : () async => await kvm.serve(),
       icon: Icon(kvmStatus.isServerMode ? Icons.stop : Icons.play_arrow),
       label: Text(kvmStatus.isServerMode ? 'Stop' : 'Start Server'),
       style: FilledButton.styleFrom(
@@ -199,7 +199,7 @@ class _PortConfigurationSection extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final kvmStatus = ref.watch(
-      kvmSwitchProvider.select((state) => state.status),
+      kvmProvider.select((state) => state.status),
     );
     final theme = Theme.of(context);
     final portController = useTextEditingController(
@@ -352,7 +352,7 @@ class _ClientList extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final kvmStatus = ref.watch(
-      kvmSwitchProvider.select((state) => state.status),
+      kvmProvider.select((state) => state.status),
     );
     final clientsAsync = ref.watch(clientsProvider);
 

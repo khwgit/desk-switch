@@ -1,4 +1,4 @@
-import 'package:desk_switch/core/services/client/receiver_service.dart';
+import 'package:desk_switch/services/communication/receiver_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'app_status_bar_providers.g.dart';

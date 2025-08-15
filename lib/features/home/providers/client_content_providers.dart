@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:desk_switch/core/services/client/discovery_service.dart';
-import 'package:desk_switch/core/services/client/receiver_service.dart';
-import 'package:desk_switch/core/services/server/broadcast_service.dart';
 import 'package:desk_switch/models/server_data.dart';
+import 'package:desk_switch/services/communication/receiver_service.dart';
+import 'package:desk_switch/services/pair/broadcast_service.dart';
+import 'package:desk_switch/services/pair/discovery_service.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -22,22 +22,23 @@ Future<List<ServerData>> servers(Ref ref) async {
   final connected = ref.watch(connectedServerProvider);
   final servers = ref.watch(
     discoveryServiceProvider.select(
-      (state) => state.servers.values,
+      (state) => state.servers.values.expand<ServerData>(
+        (data) {
+          if (data.id == localId) {
+            return []; // Don't show local server in the list
+          }
+          if (data.id == connected?.id) {
+            return [data.copyWith(status: connected?.status)];
+          }
+
+          return [data.copyWith(status: ServerStatus.online)];
+        },
+      ).toList(),
     ),
   );
 
-  return servers.expand<ServerData>(
-    (data) {
-      if (data.id == localId) {
-        return []; // Don't show local server in the list
-      }
-      if (data.id == connected?.id) {
-        return [data.copyWith(status: connected?.status)];
-      }
-
-      return [data.copyWith(status: ServerStatus.online)];
-    },
-  ).toList();
+  ref.keepAlive();
+  return servers;
 }
 
 @riverpod
@@ -57,7 +58,7 @@ ServerData? connectedServer(Ref ref) {
 }
 
 // Notifier for selected server with availability checking
-@Riverpod(keepAlive: true)
+@riverpod
 class SelectedServer extends _$SelectedServer {
   @override
   ServerData? build() {
@@ -72,6 +73,7 @@ class SelectedServer extends _$SelectedServer {
       );
     });
 
+    ref.keepAlive();
     return null;
   }
 
