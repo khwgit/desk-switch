@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:desk_switch/models/server_data.dart';
+import 'package:desk_switch/models/server.dart';
 import 'package:desk_switch/services/communication/receiver_service.dart';
 import 'package:desk_switch/services/pair/broadcast_service.dart';
 import 'package:desk_switch/services/pair/discovery_service.dart';
@@ -12,7 +12,7 @@ part 'client_content_providers.g.dart';
 
 // Provider for the list of online servers (future: combine with pins)
 @riverpod
-Future<List<ServerData>> servers(Ref ref) async {
+Future<List<Server>> servers(Ref ref) async {
   await ref.watch(_initDiscoveryProvider.future);
   final localId = ref.watch(
     broadcastServiceProvider.select(
@@ -22,7 +22,7 @@ Future<List<ServerData>> servers(Ref ref) async {
   final connected = ref.watch(connectedServerProvider);
   final servers = ref.watch(
     discoveryServiceProvider.select(
-      (state) => state.servers.values.expand<ServerData>(
+      (state) => state.servers.values.expand<Server>(
         (data) {
           if (data.id == localId) {
             return []; // Don't show local server in the list
@@ -49,7 +49,7 @@ Future<void> _initDiscovery(Ref ref) async {
 }
 
 @riverpod
-ServerData? connectedServer(Ref ref) {
+Server? connectedServer(Ref ref) {
   return ref.watch(
     receiverServiceProvider.select(
       (state) => state.server,
@@ -61,7 +61,7 @@ ServerData? connectedServer(Ref ref) {
 @riverpod
 class SelectedServer extends _$SelectedServer {
   @override
-  ServerData? build() {
+  Server? build() {
     // Watch the servers stream to check availability
     ref.listen(serversProvider, (previous, next) {
       state = next.when(
@@ -77,7 +77,7 @@ class SelectedServer extends _$SelectedServer {
     return null;
   }
 
-  void select(ServerData? server) => state = server;
+  void select(Server? server) => state = server;
 }
 
 // Notifier for pinned server IDs

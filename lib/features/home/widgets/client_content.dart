@@ -2,7 +2,7 @@ import 'package:desk_switch/core/utils/logger.dart';
 import 'package:desk_switch/features/home/providers/client_content_providers.dart';
 import 'package:desk_switch/features/home/widgets/server_card.dart';
 import 'package:desk_switch/features/shared/providers/kvm.dart';
-import 'package:desk_switch/models/server_data.dart';
+import 'package:desk_switch/models/server.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -201,7 +201,7 @@ class _ServerList extends HookConsumerWidget {
 
   void _showAddServerDialog(
     BuildContext context,
-    ValueChanged<ServerData?> onServerSelected,
+    ValueChanged<Server?> onServerSelected,
   ) {
     final serverIpController = TextEditingController();
     final serverPortController = TextEditingController(text: '8080');
@@ -255,7 +255,7 @@ class _ServerList extends HookConsumerWidget {
                   : 'Manual Server';
 
               if (ip.isNotEmpty) {
-                final server = ServerData(
+                final server = Server(
                   id: const Uuid().v4(),
                   name: name,
                   host: ip,

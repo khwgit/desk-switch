@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:bonsoir/bonsoir.dart';
 import 'package:desk_switch/core/utils/logger.dart';
-import 'package:desk_switch/models/server_data.dart';
+import 'package:desk_switch/models/server.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:synchronized/synchronized.dart';
@@ -13,7 +13,7 @@ part 'discovery_service.g.dart';
 @freezed
 abstract class DiscoveryState with _$DiscoveryState {
   const factory DiscoveryState({
-    @Default({}) Map<String, ServerData> servers,
+    @Default({}) Map<String, Server> servers,
   }) = _DiscoveryState;
 
   const DiscoveryState._();
@@ -47,7 +47,7 @@ class DiscoveryService extends _$DiscoveryService {
               '📡 Found server: ${service.name}[${service.attributes['id']}]',
             );
             final id = service.id;
-            final server = ServerData(id: id, name: service.name);
+            final server = Server(id: id, name: service.name);
             state = state.copyWith(servers: {...state.servers, id: server});
             // TODO: only resolve when connected?
             service.resolve(_discovery!.serviceResolver);
@@ -62,7 +62,7 @@ class DiscoveryService extends _$DiscoveryService {
             logger.info(
               '🔍 Service resolved: ${service.name}[${service.id}] (${service.host}:${service.port})',
             );
-            final server = ServerData(
+            final server = Server(
               id: service.id,
               name: service.name,
               host: service.host,
@@ -74,6 +74,15 @@ class DiscoveryService extends _$DiscoveryService {
             break;
           case BonsoirDiscoveryServiceUpdatedEvent(:final service):
             logger.info('🔍 Service updated: ${service.name}');
+            final server = Server(
+              id: service.id,
+              name: service.name,
+              host: service.host,
+              port: int.tryParse(service.attributes['ws_port'] ?? '0'),
+            );
+            state = state.copyWith(
+              servers: {...state.servers, server.id: server},
+            );
             break;
           case BonsoirDiscoveryStartedEvent():
             logger.info('🚀 Discovery started');

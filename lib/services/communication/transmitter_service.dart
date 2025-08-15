@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:desk_switch/core/utils/logger.dart';
-import 'package:desk_switch/models/client_data.dart';
+import 'package:desk_switch/models/client.dart';
 import 'package:desk_switch/models/message.dart';
 import 'package:desk_switch/models/message.pb.dart' as pb;
-import 'package:desk_switch/models/server_data.dart';
+import 'package:desk_switch/models/server.dart';
 import 'package:desk_switch/models/workspace.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -18,8 +18,8 @@ part 'transmitter_service.g.dart';
 @freezed
 sealed class TransmitterState with _$TransmitterState {
   const factory TransmitterState({
-    @Default({}) Map<String, ClientData> clients,
-    ServerData? server,
+    @Default({}) Map<String, Client> clients,
+    Server? server,
     WorkspaceMessage? message,
   }) = _TransmitterState;
 
@@ -39,7 +39,7 @@ class TransmitterService extends _$TransmitterService {
   }
 
   /// Start WebSocket server
-  Future<ServerData?> start({
+  Future<Server?> start({
     required String id,
     required String name,
     required int? port,
@@ -110,7 +110,7 @@ class TransmitterService extends _$TransmitterService {
           }
         });
 
-        final server = ServerData(
+        final server = Server(
           id: id,
           name: name,
           port: _server!.port,
@@ -148,19 +148,23 @@ class TransmitterService extends _$TransmitterService {
   }
 
   void send(String clientId, Message message) async {
-    state.clients[clientId]?.socket?.add(
-      message.toProto().writeToBuffer(),
-    );
+    final socket = state.clients[clientId]?.socket;
+    if (socket == null) {
+      logger.error('❌ Client not found: $clientId');
+      return;
+    }
+
+    socket.add(message.toProto().writeToBuffer());
   }
 
   /// Verify client
-  Future<ClientData> _verify(HttpRequest request) async {
+  Future<Client> _verify(HttpRequest request) async {
     final clientId = request.headers.value('Desk-Switch-Client-Id');
     if (clientId == null) {
       throw Exception('Client ID is required');
     }
 
-    return ClientData(
+    return Client(
       id: clientId,
       name: request.headers.value('Desk-Switch-Client-Name') ?? 'Unknown',
       host: request.connectionInfo?.remoteAddress.address ?? 'unknown',

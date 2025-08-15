@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:desk_switch/core/utils/logger.dart';
 import 'package:desk_switch/models/message.dart';
 import 'package:desk_switch/models/message.pb.dart' as pb;
-import 'package:desk_switch/models/server_data.dart';
+import 'package:desk_switch/models/server.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:synchronized/synchronized.dart';
@@ -15,7 +15,7 @@ part 'receiver_service.g.dart';
 @freezed
 abstract class ReceiverState with _$ReceiverState {
   const factory ReceiverState({
-    ServerData? server,
+    Server? server,
     Message? message,
   }) = _ReceiverState;
 
@@ -40,7 +40,7 @@ class ReceiverService extends _$ReceiverService {
   }
 
   /// Connect to a server using WebSocket
-  Future<void> connect(ServerData server) async {
+  Future<void> connect(Server server) async {
     await _lock.synchronized(() async {
       if (state.server?.id == server.id) return;
       if (state.server != null) await disconnect();
@@ -58,7 +58,13 @@ class ReceiverService extends _$ReceiverService {
           '🔌 Connecting to server: ${server.name} at ${uri.host}:${uri.port}',
         );
 
-        _socket = await WebSocket.connect(uri.toString());
+        _socket = await WebSocket.connect(
+          uri.toString(),
+          headers: {
+            'Desk-Switch-Client-Id': 'client1',
+            'Desk-Switch-Client-Name': 'Client 1',
+          },
+        );
 
         // Listen to incoming messages
         _subscription = _socket!.listen(

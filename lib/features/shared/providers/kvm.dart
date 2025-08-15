@@ -1,6 +1,6 @@
 import 'package:desk_switch/core/errors/app_error.dart';
 import 'package:desk_switch/models/profile.dart';
-import 'package:desk_switch/models/server_data.dart';
+import 'package:desk_switch/models/server.dart';
 import 'package:desk_switch/services/communication/receiver_service.dart';
 import 'package:desk_switch/services/communication/transmitter_service.dart';
 import 'package:desk_switch/services/control/capture_service.dart';
@@ -79,7 +79,7 @@ class Kvm extends _$Kvm {
     return const KvmState();
   }
 
-  Future<void> connect(ServerData server) async {
+  Future<void> connect(Server server) async {
     state = state.copyWith(status: KvmStatus.connecting);
 
     try {
@@ -130,7 +130,7 @@ class Kvm extends _$Kvm {
                 await _injection.inject(input);
                 break;
               case SendSwitchEvent(message: final message):
-                // _transmitter.send(message.deviceId, message.data);
+                _transmitter.send(message.deviceId, message.data);
                 break;
               case BlockSwitchEvent():
                 // await _injection.block();

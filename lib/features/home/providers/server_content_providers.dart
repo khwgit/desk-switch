@@ -1,4 +1,4 @@
-import 'package:desk_switch/models/client_data.dart';
+import 'package:desk_switch/models/client.dart';
 import 'package:desk_switch/models/profile.dart';
 import 'package:desk_switch/services/communication/transmitter_service.dart';
 import 'package:desk_switch/services/system_service.dart';
@@ -9,7 +9,7 @@ part 'server_content_providers.g.dart';
 
 // Provider for clients
 @riverpod
-Future<List<ClientData>> clients(Ref ref) async {
+Future<List<Client>> clients(Ref ref) async {
   return ref.watch(
     transmitterServiceProvider.select(
       (state) => state.clients.values.toList(),

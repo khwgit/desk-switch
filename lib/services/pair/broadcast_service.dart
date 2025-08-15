@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:bonsoir/bonsoir.dart';
 import 'package:desk_switch/core/utils/logger.dart';
-import 'package:desk_switch/models/server_data.dart';
+import 'package:desk_switch/models/server.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:synchronized/synchronized.dart';
@@ -23,7 +23,7 @@ abstract class BroadcastState with _$BroadcastState {
 abstract class BroadcastConfig with _$BroadcastConfig {
   const factory BroadcastConfig({
     required int port,
-    required ServerData server,
+    required Server server,
   }) = _BroadcastConfig;
 
   const BroadcastConfig._();
@@ -47,7 +47,7 @@ class BroadcastService extends _$BroadcastService {
   /// Start advertisement
   Future<BroadcastConfig?> start({
     required int? port,
-    required ServerData server,
+    required Server server,
   }) async {
     return _lock.synchronized(() async {
       try {

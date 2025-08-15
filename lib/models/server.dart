@@ -1,20 +1,19 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-part 'server_data.freezed.dart';
-part 'server_data.g.dart';
+part 'server.freezed.dart';
+part 'server.g.dart';
 
 @freezed
-abstract class ServerData with _$ServerData {
-  const factory ServerData({
+abstract class Server with _$Server {
+  const factory Server({
     required String id,
     required String name,
     ServerStatus? status,
     String? host,
     int? port,
-  }) = _ServerData;
+  }) = _Server;
 
-  factory ServerData.fromJson(Map<String, dynamic> json) =>
-      _$ServerDataFromJson(json);
+  factory Server.fromJson(Map<String, dynamic> json) => _$ServerFromJson(json);
 }
 
 enum ServerStatus {

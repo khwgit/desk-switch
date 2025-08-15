@@ -1,4 +1,4 @@
-import 'package:desk_switch/models/server_data.dart';
+import 'package:desk_switch/models/server.dart';
 import 'package:flutter/material.dart';
 
 class ServerCard extends StatelessWidget {
@@ -11,7 +11,7 @@ class ServerCard extends StatelessWidget {
     required this.onPinToggle,
   });
 
-  final ServerData data;
+  final Server data;
   final bool isPinned;
   final bool isSelected;
   final VoidCallback onTap;
