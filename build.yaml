@@ -12,10 +12,12 @@ targets:
             - "**/models/**.dart"
             - "**/states/**.dart"
             - "**/errors/**.dart"
+            - "**/services/**.dart"
+            - "**/providers/**.dart"
       freezed:
         enabled: true
         options:
-          union_key: type
+          union_key: kind
           union_value_case: none
           when: false
           map: false
@@ -24,5 +26,11 @@ targets:
             - "**/models/**.dart"
             - "**/states/**.dart"
             - "**/errors/**.dart"
+            - "**/services/**.dart"
+            - "**/providers/**.dart"
       riverpod_generator:
         enabled: true
+        generate_for:
+          include:
+            - "**/services/**.dart"
+            - "**/providers/**.dart"

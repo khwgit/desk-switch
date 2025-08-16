@@ -1,0 +1,22 @@
+targets:
+  $default:
+    builders:
+      json_serializable:
+        enabled: true
+        options:
+          any_map: true
+          explicit_to_json: true
+          include_if_null: false
+        generate_for:
+          include:
+            - "**/models/**.dart"
+      freezed:
+        enabled: true
+        options:
+          union_key: kind
+          union_value_case: none
+          when: false
+          map: false
+        generate_for:
+          include:
+            - "**/models/**.dart"

@@ -36,6 +36,9 @@ migrate_working_dir/
 *.freezed.dart
 *.g.dart
 *.l10n.dart
+*.pb.dart
+*.pbenum.dart
+*.pbjson.dart
 
 # Symbolication related
 app.*.symbols

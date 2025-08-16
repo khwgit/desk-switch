@@ -26,9 +26,10 @@
     "prefix": "freeC",
     "body": [
       "@freezed",
-      "class ${1:Name} with _$${1:Name} {",
-      "  const ${1:Name}._();",
-      "  const factory ${1:Name}({${2:Param}}) = _${1:Name};",
+      "${1|sealed,abstract|} class ${2:Name} with _$${2:Name} {",
+      "  const factory ${2:Name}({${3:Param}}) = _${2:Name};",
+      "",
+      "  const ${2:Name}._();",
       "}",
       "$0"
     ],
@@ -48,12 +49,12 @@
     "prefix": "freeJsonC",
     "body": [
       "@freezed",
-      "class ${1:Name} with _$${1:Name} {",
-      "  const ${1:Name}._();",
-      "  const factory ${1:Name}({${2:Param}}) = _${1:Name};",
+      "${1|sealed,abstract|} class ${2:Name} with _$${2:Name} {",
+      "  const factory ${2:Name}({${3:Param}}) = _${2:Name};",
       "",
-      "  factory ${1:Name}.fromJson(Map<String, dynamic> json) =>",
-      "      _$${1:Name}FromJson(json);",
+      "  const ${2:Name}._();",
+      "  factory ${2:Name}.fromJson(Map<String, dynamic> json) =>",
+      "      _$${2:Name}FromJson(json);",
       "}",
       "$0"
     ],

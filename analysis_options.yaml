@@ -16,6 +16,8 @@ formatter:
   trailing_commas: preserve
 
 analyzer:
+  plugins:
+    - custom_lint
   errors:
     invalid_annotation_target: ignore
 
@@ -32,6 +34,7 @@ linter:
   # producing the lint.
   rules:
     # avoid_print: false
+    unawaited_futures: true
     prefer_single_quotes: true
     prefer_const_constructors: true
     prefer_const_declarations: true

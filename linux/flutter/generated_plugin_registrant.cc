@@ -6,14 +6,14 @@
 
 #include "generated_plugin_registrant.h"
 
-#include <desktop_window/desktop_window_plugin.h>
+#include <kvm_helper/kvm_helper_plugin.h>
 #include <screen_retriever_linux/screen_retriever_linux_plugin.h>
 #include <window_manager/window_manager_plugin.h>
 
 void fl_register_plugins(FlPluginRegistry* registry) {
-  g_autoptr(FlPluginRegistrar) desktop_window_registrar =
-      fl_plugin_registry_get_registrar_for_plugin(registry, "DesktopWindowPlugin");
-  desktop_window_plugin_register_with_registrar(desktop_window_registrar);
+  g_autoptr(FlPluginRegistrar) kvm_helper_registrar =
+      fl_plugin_registry_get_registrar_for_plugin(registry, "KvmHelperPlugin");
+  kvm_helper_plugin_register_with_registrar(kvm_helper_registrar);
   g_autoptr(FlPluginRegistrar) screen_retriever_linux_registrar =
       fl_plugin_registry_get_registrar_for_plugin(registry, "ScreenRetrieverLinuxPlugin");
   screen_retriever_linux_plugin_register_with_registrar(screen_retriever_linux_registrar);

@@ -11,6 +11,10 @@ platforms:
   macos:
   windows:
 
+workspace:
+  - packages/go_router_maker
+  - packages/kvm_helper
+
 dependencies:
   flutter:
     sdk: flutter
@@ -18,24 +22,24 @@ dependencies:
     sdk: flutter
 
   # State management and UI
-  hooks_riverpod: ^3.0.0-dev.16
+  hooks_riverpod: ^3.0.0-dev.17
   flutter_hooks:
-  go_router: ^15.1.3
+  go_router: ^16.0.0
+  go_router_maker: ^0.0.1
+  gap: ^3.0.1
 
   # Code generation
-  freezed_annotation: ^3.0.0
+  freezed_annotation: ^3.1.0
   json_annotation: ^4.9.0
-  riverpod_annotation: ^3.0.0-dev.16
+  riverpod_annotation: ^3.0.0-dev.17
 
   # Platform-specific functionality
   window_manager: ^0.5.0
-  desktop_window: ^0.4.2
-  permission_handler: ^12.0.0
+  # desktop_window: ^0.4.2
+  # permission_handler: ^12.0.1
   device_info_plus: ^11.5.0
   platform: ^3.1.6
-
-  # Network communication
-  bonsoir: ^5.1.11
+  protobuf: ^4.1.0
 
   # Utilities
   shared_preferences: ^2.5.3
@@ -43,20 +47,29 @@ dependencies:
   path_provider: ^2.1.5
   uuid: ^4.5.1
   intl: ^0.20.2
-  gap: ^3.0.1
   package_info_plus: ^8.3.0
+  collection: ^1.19.1
+  bonsoir: ^6.0.1
+  kvm_helper: ^0.0.1
+  # cassowary: ^0.4.3
+  synchronized: ^3.4.0
+  hive_ce: ^2.11.3
+  hive_ce_flutter: ^2.3.1
+  rxdart: ^0.28.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   custom_lint:
-  riverpod_lint: ^3.0.0-dev.16
-  build_runner: ^2.4.15
+  riverpod_lint: ^3.0.0-dev.17
+  build_runner: ^2.5.4
   mockito: ^5.4.6
-  freezed: ^3.0.6
+  freezed: ^3.2.0
   json_serializable: ^6.9.5
-  riverpod_generator: ^3.0.0-dev.16
+  riverpod_generator: ^3.0.0-dev.17
+  melos: ^7.0.0-dev.9
+  hive_ce_generator: ^1.9.2
 
 flutter:
   uses-material-design: true
@@ -65,3 +78,20 @@ flutter:
   # assets:
   #   - assets/images/
   #   - assets/icons/
+melos:
+  scripts:
+    analyze:
+      run: melos exec -c 1 -- "dart analyze ."
+      description: Analyze all packages
+
+    build:
+      run: melos exec -c 1 -- "dart run build_runner build --delete-conflicting-outputs"
+      description: Generate all packages
+
+    format:
+      run: melos exec -c 1 -- "dart format ."
+      description: Format all packages
+
+    test:
+      run: melos exec -c 1 -- "dart test"
+      description: Test all packages

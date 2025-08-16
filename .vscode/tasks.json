@@ -76,8 +76,10 @@
 			"command": "dart run build_runner build --delete-conflicting-outputs",
 			"problemMatcher": [],
 			"detail": "Run build runner to generate code once",
+			"dependsOrder": "sequence",
 			"dependsOn": [
-				"generate l10n"
+				"generate l10n",
+				"generate proto"
 			]
 		},
 		{
@@ -86,8 +88,10 @@
 			"command": "dart run build_runner watch --delete-conflicting-outputs",
 			"problemMatcher": [],
 			"detail": "Run build runner to watch generating code",
+			"dependsOrder": "sequence",
 			"dependsOn": [
-				"generate l10n"
+				"generate l10n",
+				"generate proto"
 			]
 		},
 		{
@@ -96,6 +100,13 @@
 			"command": "flutter gen-l10n",
 			"problemMatcher": [],
 			"detail": "Generate localization files"
+		},
+		{
+			"label": "generate proto",
+			"type": "shell",
+			"command": "protoc --proto_path=proto --dart_out=lib/models proto/*.proto",
+			"problemMatcher": [],
+			"detail": "Generate proto files"
 		},
 		{
 			"label": "generate splash screen",

@@ -1,0 +1,72 @@
+syntax = "proto3";
+package desk_switch;
+
+// Enum for input type
+enum InputType {
+  KEYBOARD = 0;
+  MOUSE = 1;
+}
+
+enum KeyboardInputType {
+  KEY_DOWN = 0;
+  KEY_UP = 1;
+  FLAGS_CHANGED = 2;
+}
+
+enum KeyModifier {
+  SHIFT = 0;
+  CONTROL = 1;
+  OPTION = 2;
+  COMMAND = 3;
+  CAPS_LOCK = 4;
+  FUNCTION = 5;
+  NUMERIC_PAD = 6;
+  HELP = 7;
+}
+
+enum MouseInputType {
+  LEFT_MOUSE_DOWN = 0;
+  LEFT_MOUSE_UP = 1;
+  RIGHT_MOUSE_DOWN = 2;
+  RIGHT_MOUSE_UP = 3;
+  MOUSE_MOVED = 4;
+  LEFT_MOUSE_DRAGGED = 5;
+  RIGHT_MOUSE_DRAGGED = 6;
+  SCROLL_WHEEL = 7;
+  OTHER_MOUSE_DOWN = 8;
+  OTHER_MOUSE_UP = 9;
+  OTHER_MOUSE_DRAGGED = 10;
+}
+
+enum MouseButton {
+  LEFT = 0;
+  RIGHT = 1;
+  CENTER = 2;
+}
+
+message KeyboardInput {
+  int32 code = 1;
+  KeyboardInputType type = 2;
+  repeated KeyModifier modifiers = 3;
+  optional string character = 4;
+  int32 flag = 5;
+}
+
+message MouseInput {
+  double x = 1;
+  double y = 2;
+  MouseInputType type = 3;
+  optional MouseButton button = 4;
+  double deltaX = 5;
+  double deltaY = 6;
+  double deltaZ = 7;
+  int32 flag = 8;
+}
+
+message Input {
+  InputType kind = 1;
+  oneof input {
+    KeyboardInput keyboard = 2;
+    MouseInput mouse = 3;
+  }
+} 
